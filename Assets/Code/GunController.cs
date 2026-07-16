@@ -98,6 +98,7 @@ public class GunController : MonoBehaviour
         if (Physics.Raycast(ray, out RaycastHit hit, range))
         {
             hitPoint = hit.point;
+            Debug.Log(hit.collider.name);
         }
         else
         {

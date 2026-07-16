@@ -16,15 +16,24 @@ public class Bullet : MonoBehaviour
         transform.position += transform.forward * speed * Time.deltaTime;
     }
 
-    private void OnTriggerEnter(Collider other)
+ private void OnTriggerEnter(Collider other)
+{
+    Debug.Log("Hit: " + other.name);
+
+    ZombieAI zombie = other.GetComponentInParent<ZombieAI>();
+
+    if (zombie != null)
     {
-        ZombieAI zombie = other.GetComponentInParent<ZombieAI>();
+        zombie.TakeDamage(damage);
 
-        if (zombie != null)
-        {
-            zombie.TakeDamage(damage);
-        }
+        Vector3 hitPoint = other.ClosestPoint(transform.position);
+        Vector3 hitNormal = (hitPoint - zombie.transform.position).normalized;
 
-        Destroy(gameObject);
+        zombie.SpawnBlood(hitPoint, hitNormal);
     }
+
+    Destroy(gameObject);
+}
+
+
 }

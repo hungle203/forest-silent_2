@@ -24,6 +24,8 @@ public class ZombieAI : MonoBehaviour
     [Header("Attack")]
 public float attackDamage = 15f;
 
+public GameObject bloodEffect;
+
     float currentHealth;
 
     NavMeshAgent agent;
@@ -227,5 +229,18 @@ void OnDrawGizmos()
         Gizmos.color = Color.green;
         Gizmos.DrawLine(transform.position, player.position);
     }
+}
+
+// spawn máu
+public void SpawnBlood(Vector3 hitPoint, Vector3 hitNormal)
+{
+    if (bloodEffect == null) return;
+
+    GameObject blood = Instantiate(
+        bloodEffect,
+        hitPoint,
+        Quaternion.LookRotation(hitNormal));
+
+    Destroy(blood, 2f);
 }
 }

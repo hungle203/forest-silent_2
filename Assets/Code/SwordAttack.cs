@@ -37,18 +37,19 @@ public class SwordAttack : MonoBehaviour
         Ray ray = new Ray(
             playerCamera.transform.position,
             playerCamera.transform.forward);
+if (Physics.Raycast(ray, out RaycastHit hit, attackRange))
+{
+    ZombieAI zombie = hit.collider.GetComponentInParent<ZombieAI>();
 
-        if (Physics.Raycast(ray, out RaycastHit hit, attackRange))
-        {
-            ZombieAI zombie = hit.collider.GetComponent<ZombieAI>();
+    if (zombie != null)
+    {
+        zombie.TakeDamage(damage);
 
-            if (zombie != null)
-            {
-                zombie.TakeDamage(damage);
+        zombie.SpawnBlood(hit.point, hit.normal);
 
-                Debug.Log("Hit Zombie");
-            }
-        }
+        Debug.Log("Hit Zombie");
+    }
+}
 
         yield return new WaitForSeconds(0.4f);
 

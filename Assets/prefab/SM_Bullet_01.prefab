@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 49096781323100584}
   - component: {fileID: 3293842593637653659}
   - component: {fileID: -2451550689810897300}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: SM_Bullet_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -185,7 +185,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bullet
   speed: 200
-  damage: 25
+  damage: 100
   lifeTime: 3
 --- !u!65 &-2451550689810897300
 BoxCollider:
@@ -219,7 +219,7 @@ GameObject:
   - component: {fileID: 8121603224672049043}
   - component: {fileID: 4498653146799478291}
   - component: {fileID: 7177901865179715160}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: SM_Bullet_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
