@@ -22,9 +22,14 @@ public class ZombieAI : MonoBehaviour
     public float maxHealth = 100f;
 
     [Header("Attack")]
-public float attackDamage = 15f;
+    public float attackDamage = 15f;
 
-public GameObject bloodEffect;
+    [Header("Blood")]
+    public GameObject bloodEffect;
+
+    [Header("Performance")]
+    [Tooltip("AI cập nhật bao nhiêu lần mỗi giây")]
+    public float aiUpdateRate = 10f;
 
     float currentHealth;
 
@@ -37,12 +42,24 @@ public GameObject bloodEffect;
     bool roaring;
     bool gettingHit;
 
+    float aiTimer;
+
+    // Cache khoảng cách bình phương
+    float detectRangeSqr;
+    float runRangeSqr;
+    float attackRangeSqr;
+
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         anim = GetComponent<Animator>();
 
         currentHealth = maxHealth;
+
+        // Cache để không phải tính lại mỗi frame
+        detectRangeSqr = detectRange * detectRange;
+        runRangeSqr = runRange * runRange;
+        attackRangeSqr = attackRange * attackRange;
 
         if (player == null)
         {
@@ -51,6 +68,8 @@ public GameObject bloodEffect;
             if (p != null)
                 player = p.transform;
         }
+
+        aiTimer = Random.Range(0f, 0.1f);
     }
 
     void Update()
@@ -58,29 +77,45 @@ public GameObject bloodEffect;
         if (dead || player == null)
             return;
 
+        // Không cần tính AI mỗi frame
+        aiTimer -= Time.deltaTime;
+
+        if (aiTimer > 0f)
+            return;
+
+        aiTimer = 1f / aiUpdateRate;
+
+        UpdateAI();
+    }
+
+    void UpdateAI()
+    {
         if (attacking || roaring || gettingHit)
             return;
 
-        float distance =
-            Vector3.Distance(transform.position, player.position);
+        Vector3 offset = transform.position - player.position;
+
+        float distanceSqr = offset.sqrMagnitude;
 
         //--------------------------------
         // Phát hiện player
         //--------------------------------
-        if (!playerDetected && distance <= detectRange)
+        if (!playerDetected)
         {
-            playerDetected = true;
-            StartCoroutine(RoarCoroutine());
+            if (distanceSqr <= detectRangeSqr)
+            {
+                playerDetected = true;
+
+                StartCoroutine(RoarCoroutine());
+            }
+
             return;
         }
-
-        if (!playerDetected)
-            return;
 
         //--------------------------------
         // Tấn công
         //--------------------------------
-        if (distance <= attackRange)
+        if (distanceSqr <= attackRangeSqr)
         {
             StartCoroutine(AttackCoroutine());
             return;
@@ -89,18 +124,26 @@ public GameObject bloodEffect;
         //--------------------------------
         // Đuổi player
         //--------------------------------
+        if (!agent.enabled)
+            return;
+
         agent.isStopped = false;
+
+        // Chỉ SetDestination khi cần
         agent.SetDestination(player.position);
 
-        if (distance <= runRange)
+        //--------------------------------
+        // Walk / Run
+        //--------------------------------
+        if (distanceSqr <= runRangeSqr)
         {
             agent.speed = runSpeed;
-            anim.SetFloat("Speed", 1f); // Run
+            anim.SetFloat("Speed", 1f);
         }
         else
         {
             agent.speed = walkSpeed;
-            anim.SetFloat("Speed", 0.5f); // Walk
+            anim.SetFloat("Speed", 0.5f);
         }
     }
 
@@ -123,29 +166,29 @@ public GameObject bloodEffect;
 
         agent.isStopped = true;
 
-        // quay mặt về player
+        // Quay mặt về player
         Vector3 dir = player.position - transform.position;
-        dir.y = 0;
+        dir.y = 0f;
 
-        if (dir != Vector3.zero)
+        if (dir.sqrMagnitude > 0.001f)
         {
             transform.rotation =
-                Quaternion.Slerp(
-                    transform.rotation,
-                    Quaternion.LookRotation(dir),
-                    1f);
+                Quaternion.LookRotation(dir);
         }
 
         int randomAttack = Random.Range(1, 5);
 
-       anim.CrossFade("attack" + randomAttack, 0.1f);
+        anim.CrossFade(
+            "attack" + randomAttack,
+            0.1f
+        );
 
-// Chờ tới lúc tay zombie chạm người
-yield return new WaitForSeconds(0.7f);
+        // Chờ animation tới lúc đánh
+        yield return new WaitForSeconds(0.7f);
 
-DealDamage();
+        DealDamage();
 
-yield return new WaitForSeconds(0.8f);
+        yield return new WaitForSeconds(0.8f);
 
         attacking = false;
     }
@@ -157,7 +200,7 @@ yield return new WaitForSeconds(0.8f);
 
         currentHealth -= damage;
 
-        if (currentHealth <= 0)
+        if (currentHealth <= 0f)
         {
             Die();
             return;
@@ -170,7 +213,8 @@ yield return new WaitForSeconds(0.8f);
     {
         gettingHit = true;
 
-        agent.isStopped = true;
+        if (agent.enabled)
+            agent.isStopped = true;
 
         anim.CrossFade("gethit", 0.1f);
 
@@ -183,64 +227,106 @@ yield return new WaitForSeconds(0.8f);
     {
         dead = true;
 
-        agent.isStopped = true;
-        agent.enabled = false;
+        StopAllCoroutines();
+
+        if (agent.enabled)
+        {
+            agent.isStopped = true;
+            agent.enabled = false;
+        }
 
         int randomDeath = Random.Range(1, 3);
 
-        anim.CrossFade("death" + randomDeath, 0.1f);
+        anim.CrossFade(
+            "death" + randomDeath,
+            0.1f
+        );
 
         Destroy(gameObject, 10f);
     }
 
     public void DealDamage()
-{
-    if (player == null)
-        return;
-
-    float distance =
-        Vector3.Distance(transform.position, player.position);
-
-    if (distance <= attackRange + 0.5f)
     {
-        PlayerHealth hp = player.GetComponent<PlayerHealth>();
+        if (player == null)
+            return;
 
-        if (hp != null)
+        Vector3 offset = transform.position - player.position;
+
+        float distanceSqr = offset.sqrMagnitude;
+
+        float damageRange = attackRange + 0.5f;
+
+        if (distanceSqr <= damageRange * damageRange)
         {
-            hp.TakeDamage(attackDamage);
+            PlayerHealth hp =
+                player.GetComponent<PlayerHealth>();
+if (hp != null)
+{
+    hp.TakeDamage(attackDamage);
+
+    DamageVignette vignette =
+        FindFirstObjectByType<DamageVignette>();
+
+    if (vignette != null)
+    {
+        vignette.ShowDamage();
+    }
+}
         }
     }
-}
 
+    // ========================================
+    // BLOOD
+    // ========================================
 
-void OnDrawGizmos()
-{
-    Gizmos.color = Color.yellow;
-    Gizmos.DrawWireSphere(transform.position, detectRange);
-
-    Gizmos.color = Color.cyan;
-    Gizmos.DrawWireSphere(transform.position, runRange);
-
-    Gizmos.color = Color.red;
-    Gizmos.DrawWireSphere(transform.position, attackRange);
-
-    if (player != null)
+    public void SpawnBlood(
+        Vector3 hitPoint,
+        Vector3 hitNormal)
     {
-        Gizmos.color = Color.green;
-        Gizmos.DrawLine(transform.position, player.position);
+        if (bloodEffect == null)
+            return;
+
+        GameObject blood = Instantiate(
+            bloodEffect,
+            hitPoint,
+            Quaternion.LookRotation(hitNormal)
+        );
+
+        Destroy(blood, 2f);
     }
-}
 
-// spawn máu
-public void SpawnBlood(Vector3 hitPoint, Vector3 hitNormal)
-{
-    if (bloodEffect == null) return;
+    // ========================================
+    // GIZMOS
+    // ========================================
 
-    GameObject blood = Instantiate(
-        bloodEffect,
-        hitPoint,
-        Quaternion.LookRotation(hitNormal));
+    void OnDrawGizmos()
+    {
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(
+            transform.position,
+            detectRange
+        );
 
-    Destroy(blood, 2f);
-}
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(
+            transform.position,
+            runRange
+        );
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(
+            transform.position,
+            attackRange
+        );
+
+        if (player != null)
+        {
+            Gizmos.color = Color.green;
+
+            Gizmos.DrawLine(
+                transform.position,
+                player.position
+            );
+        }
+    }
 }
