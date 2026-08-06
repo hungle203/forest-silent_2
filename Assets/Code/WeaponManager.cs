@@ -35,43 +35,72 @@ public class WeaponManager : MonoBehaviour
     {
         UnequipAll();
 
-        // Ban đầu chưa có bộ đàm
+        // Bộ đàm ban đầu ẩn
         if (walkieTalkie != null)
             walkieTalkie.SetActive(false);
     }
 
     void Update()
     {
+        if (Keyboard.current == null)
+            return;
+
+        // =========================
+        // 1 = SÚNG
+        // =========================
         if (Keyboard.current.digit1Key.wasPressedThisFrame)
+        {
             EquipGun();
+        }
 
+        // =========================
+        // 2 = KATANA
+        // =========================
         if (Keyboard.current.digit2Key.wasPressedThisFrame)
+        {
             EquipKatana();
+        }
 
+        // =========================
+        // 3 = MEDKIT
+        // =========================
         if (Keyboard.current.digit3Key.wasPressedThisFrame)
+        {
+            UseMedkit();
+        }
+
+        // =========================
+        // 4 = TAY KHÔNG
+        // =========================
+        if (Keyboard.current.digit4Key.wasPressedThisFrame)
+        {
             EquipNone();
+        }
     }
 
-    // ===== PICKUP =====
+    // ========================================
+    // PICKUP
+    // ========================================
 
     public void PickupGun()
-{
-    hasGun = true;
+    {
+        hasGun = true;
 
-    if (InventoryUI.Instance != null)
-        InventoryUI.Instance.ShowGun();
+        if (InventoryUI.Instance != null)
+            InventoryUI.Instance.ShowGun();
 
-    EquipGun();
-}
-   public void PickupKatana()
-{
-    hasKatana = true;
+        EquipGun();
+    }
 
-    if (InventoryUI.Instance != null)
-        InventoryUI.Instance.ShowKatana();
+    public void PickupKatana()
+    {
+        hasKatana = true;
 
-    EquipKatana();
-}
+        if (InventoryUI.Instance != null)
+            InventoryUI.Instance.ShowKatana();
+
+        EquipKatana();
+    }
 
     public void PickupWalkieTalkie()
     {
@@ -82,52 +111,99 @@ public class WeaponManager : MonoBehaviour
     }
 
     public void HideWalkieTalkie()
-{
-    if (walkieTalkie != null)
-        walkieTalkie.SetActive(false);
-}
+    {
+        if (walkieTalkie != null)
+            walkieTalkie.SetActive(false);
+    }
 
-    // ===== EQUIP =====
+    // ========================================
+    // SÚNG
+    // ========================================
 
-   public void EquipGun()
-{
-    if (!hasGun) return;
+    public void EquipGun()
+    {
+        if (!hasGun)
+            return;
 
-    currentWeapon = WeaponType.Gun;
+        currentWeapon = WeaponType.Gun;
 
-    gun.SetActive(true);
-    katana.SetActive(false);
+        if (gun != null)
+            gun.SetActive(true);
 
-    InventoryUI.Instance.SelectGun();
-}
+        if (katana != null)
+            katana.SetActive(false);
 
-   public void EquipKatana()
-{
-    if (!hasKatana) return;
+        if (InventoryUI.Instance != null)
+            InventoryUI.Instance.SelectGun();
+    }
 
-    currentWeapon = WeaponType.Katana;
+    // ========================================
+    // KATANA
+    // ========================================
 
-    gun.SetActive(false);
-    katana.SetActive(true);
+    public void EquipKatana()
+    {
+        if (!hasKatana)
+            return;
 
-    InventoryUI.Instance.SelectKatana();
-}
+        currentWeapon = WeaponType.Katana;
 
-  public void EquipNone()
-{
-    currentWeapon = WeaponType.None;
+        if (gun != null)
+            gun.SetActive(false);
 
-    gun.SetActive(false);
-    katana.SetActive(false);
+        if (katana != null)
+            katana.SetActive(true);
 
-    InventoryUI.Instance.SelectNone();
-}
+        if (InventoryUI.Instance != null)
+            InventoryUI.Instance.SelectKatana();
+    }
+
+    // ========================================
+    // TAY KHÔNG
+    // ========================================
+
+    public void EquipNone()
+    {
+        currentWeapon = WeaponType.None;
+
+        if (gun != null)
+            gun.SetActive(false);
+
+        if (katana != null)
+            katana.SetActive(false);
+
+        if (InventoryUI.Instance != null)
+            InventoryUI.Instance.SelectNone();
+    }
+
+    // ========================================
+    // DÙNG MEDKIT
+    // ========================================
+
+    void UseMedkit()
+    {
+        if (MedkitInventory.Instance == null)
+            return;
+
+        // Cất súng / kiếm
+        EquipNone();
+
+        // Dùng 1 hộp cứu thương
+        MedkitInventory.Instance.UseMedkit();
+    }
+
+    // ========================================
+    // BAN ĐẦU
+    // ========================================
 
     void UnequipAll()
     {
         currentWeapon = WeaponType.None;
 
-        gun.SetActive(false);
-        katana.SetActive(false);
+        if (gun != null)
+            gun.SetActive(false);
+
+        if (katana != null)
+            katana.SetActive(false);
     }
 }

@@ -5,16 +5,19 @@ public class InventoryUI : MonoBehaviour
 {
     public static InventoryUI Instance;
 
-    Color activeColor = Color.white;
-    Color inactiveColor = new Color(1, 1, 1, 0.3f);
+    [Header("Colors")]
+    public Color activeColor = Color.white;
+    public Color inactiveColor = new Color(1f, 1f, 1f, 0.3f);
 
     [Header("Slots")]
     public GameObject katanaSlot;
     public GameObject gunSlot;
+    public GameObject medkitSlot;
 
     [Header("Slot Images")]
     public Image katanaImage;
     public Image gunImage;
+    public Image medkitImage;
 
     void Awake()
     {
@@ -23,35 +26,85 @@ public class InventoryUI : MonoBehaviour
 
     void Start()
     {
-        katanaSlot.SetActive(false);
-        gunSlot.SetActive(false);
+        if (katanaSlot != null)
+            katanaSlot.SetActive(false);
+
+        if (gunSlot != null)
+            gunSlot.SetActive(false);
+
+        if (medkitSlot != null)
+            medkitSlot.SetActive(false);
     }
+
+    // =========================
+    // HIỆN SLOT
+    // =========================
 
     public void ShowKatana()
     {
-        katanaSlot.SetActive(true);
+        if (katanaSlot != null)
+            katanaSlot.SetActive(true);
     }
 
     public void ShowGun()
     {
-        gunSlot.SetActive(true);
+        if (gunSlot != null)
+            gunSlot.SetActive(true);
     }
+
+    public void ShowMedkit()
+    {
+        if (medkitSlot != null)
+            medkitSlot.SetActive(true);
+    }
+
+    // =========================
+    // CHỌN SÚNG
+    // =========================
 
     public void SelectGun()
     {
-        gunImage.color = activeColor;
-        katanaImage.color = inactiveColor;
+        SetColor(gunImage, activeColor);
+        SetColor(katanaImage, inactiveColor);
+        SetColor(medkitImage, inactiveColor);
     }
+
+    // =========================
+    // CHỌN KATANA
+    // =========================
 
     public void SelectKatana()
     {
-        katanaImage.color = activeColor;
-        gunImage.color = inactiveColor;
+        SetColor(katanaImage, activeColor);
+        SetColor(gunImage, inactiveColor);
+        SetColor(medkitImage, inactiveColor);
     }
+
+    // =========================
+    // CHỌN MEDKIT
+    // =========================
+
+    public void SelectMedkit()
+    {
+        SetColor(medkitImage, activeColor);
+        SetColor(gunImage, inactiveColor);
+        SetColor(katanaImage, inactiveColor);
+    }
+
+    // =========================
+    // TAY KHÔNG
+    // =========================
 
     public void SelectNone()
     {
-        gunImage.color = inactiveColor;
-        katanaImage.color = inactiveColor;
+        SetColor(gunImage, inactiveColor);
+        SetColor(katanaImage, inactiveColor);
+        SetColor(medkitImage, inactiveColor);
+    }
+
+    void SetColor(Image image, Color color)
+    {
+        if (image != null)
+            image.color = color;
     }
 }
