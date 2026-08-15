@@ -17,6 +17,10 @@ public class WeaponManager : MonoBehaviour
     public bool hasKatana;
     public bool hasWalkieTalkie;
 
+    [Header("Katana Position")]
+public Vector3 katanaLocalPosition;
+public Vector3 katanaLocalRotation;
+
     public enum WeaponType
     {
         None,
@@ -141,22 +145,28 @@ public class WeaponManager : MonoBehaviour
     // KATANA
     // ========================================
 
-    public void EquipKatana()
+   public void EquipKatana()
+{
+    if (!hasKatana)
+        return;
+
+    currentWeapon = WeaponType.Katana;
+
+    if (gun != null)
+        gun.SetActive(false);
+
+    if (katana != null)
     {
-        if (!hasKatana)
-            return;
+        katana.SetActive(true);
 
-        currentWeapon = WeaponType.Katana;
-
-        if (gun != null)
-            gun.SetActive(false);
-
-        if (katana != null)
-            katana.SetActive(true);
-
-        if (InventoryUI.Instance != null)
-            InventoryUI.Instance.SelectKatana();
+        katana.transform.localPosition = katanaLocalPosition;
+        katana.transform.localRotation =
+            Quaternion.Euler(katanaLocalRotation);
     }
+
+    if (InventoryUI.Instance != null)
+        InventoryUI.Instance.SelectKatana();
+}
 
     // ========================================
     // TAY KHÔNG
