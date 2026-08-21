@@ -16,14 +16,26 @@ public class PlayerMovement : MonoBehaviour
     public float maxLookAngle = 80f;
 
     [Header("Head Bob")]
-public float walkBobSpeed = 14f;
-public float walkBobAmount = 0.05f;
+    public float walkBobSpeed = 14f;
+    public float walkBobAmount = 0.05f;
 
-public float sprintBobSpeed = 18f;
-public float sprintBobAmount = 0.08f;
+    public float sprintBobSpeed = 18f;
+    public float sprintBobAmount = 0.08f;
 
-private float defaultYPos;
-private float bobTimer;
+    [Header("Footstep")]
+    public float walkStepInterval = 0.5f;
+    public float sprintStepInterval = 0.32f;
+
+    private float footstepTimer;
+
+    [Header("Breathing")]
+    public float breathingStartDelay = 0.5f;
+
+    private float breathingTimer;
+    private bool breathing;
+
+    private float defaultYPos;
+    private float bobTimer;
 
     private CharacterController controller;
     private Vector3 velocity;
@@ -32,6 +44,7 @@ private float bobTimer;
     void Start()
     {
         defaultYPos = cameraHolder.localPosition.y;
+
         controller = GetComponent<CharacterController>();
 
         Cursor.lockState = CursorLockMode.Locked;
@@ -43,60 +56,210 @@ private float bobTimer;
         Move();
         Look();
         HeadBob();
+        HandleFootsteps();
+        HandleBreathing();
     }
 
-   void HeadBob()
-{
-    bool isMoving =
-        (Keyboard.current.wKey.isPressed ||
-         Keyboard.current.aKey.isPressed ||
-         Keyboard.current.sKey.isPressed ||
-         Keyboard.current.dKey.isPressed)
-        && controller.isGrounded;
+    // =====================================================
+    // FOOTSTEP
+    // =====================================================
 
-    if (isMoving)
+    void HandleFootsteps()
     {
-        bool sprinting = Keyboard.current.leftShiftKey.isPressed;
+        if (Keyboard.current == null)
+            return;
 
-        float speed = sprinting ? sprintBobSpeed : walkBobSpeed;
-        float amount = sprinting ? sprintBobAmount : walkBobAmount;
+        bool moving =
+            (Keyboard.current.wKey.isPressed ||
+             Keyboard.current.aKey.isPressed ||
+             Keyboard.current.sKey.isPressed ||
+             Keyboard.current.dKey.isPressed);
 
-        bobTimer += Time.deltaTime * speed;
+        bool grounded = controller.isGrounded;
 
-        Vector3 pos = cameraHolder.localPosition;
-        pos.y = defaultYPos + Mathf.Sin(bobTimer) * amount;
+        if (!moving || !grounded)
+        {
+            footstepTimer = 0f;
+            return;
+        }
 
-        cameraHolder.localPosition = pos;
+        bool sprinting =
+            Keyboard.current.leftShiftKey.isPressed;
+
+        float stepInterval =
+            sprinting
+            ? sprintStepInterval
+            : walkStepInterval;
+
+        footstepTimer -= Time.deltaTime;
+
+        if (footstepTimer <= 0f)
+        {
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayFootstep();
+            }
+
+            footstepTimer = stepInterval;
+        }
     }
-    else
+
+    // =====================================================
+    // BREATHING
+    // =====================================================
+
+    void HandleBreathing()
     {
-        bobTimer = 0;
+        if (Keyboard.current == null)
+            return;
 
-        Vector3 pos = cameraHolder.localPosition;
-        pos.y = Mathf.Lerp(pos.y, defaultYPos, Time.deltaTime * 10f);
+        bool moving =
+            (Keyboard.current.wKey.isPressed ||
+             Keyboard.current.aKey.isPressed ||
+             Keyboard.current.sKey.isPressed ||
+             Keyboard.current.dKey.isPressed);
 
-        cameraHolder.localPosition = pos;
+        bool sprinting =
+            Keyboard.current.leftShiftKey.isPressed;
+
+        bool shouldBreathe =
+            moving &&
+            sprinting &&
+            controller.isGrounded;
+
+        if (shouldBreathe)
+        {
+            if (!breathing)
+            {
+                breathingTimer += Time.deltaTime;
+
+                if (breathingTimer >= breathingStartDelay)
+                {
+                    StartBreathing();
+                }
+            }
+        }
+        else
+        {
+            breathingTimer = 0f;
+
+            if (breathing)
+            {
+                StopBreathing();
+            }
+        }
     }
-}
+
+    void StartBreathing()
+    {
+        breathing = true;
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayBreathing();
+        }
+    }
+
+    void StopBreathing()
+    {
+        breathing = false;
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopBreathing();
+        }
+    }
+
+    // =====================================================
+    // HEAD BOB
+    // =====================================================
+
+    void HeadBob()
+    {
+        bool isMoving =
+            (Keyboard.current.wKey.isPressed ||
+             Keyboard.current.aKey.isPressed ||
+             Keyboard.current.sKey.isPressed ||
+             Keyboard.current.dKey.isPressed)
+            && controller.isGrounded;
+
+        if (isMoving)
+        {
+            bool sprinting =
+                Keyboard.current.leftShiftKey.isPressed;
+
+            float speed =
+                sprinting
+                ? sprintBobSpeed
+                : walkBobSpeed;
+
+            float amount =
+                sprinting
+                ? sprintBobAmount
+                : walkBobAmount;
+
+            bobTimer += Time.deltaTime * speed;
+
+            Vector3 pos = cameraHolder.localPosition;
+
+            pos.y =
+                defaultYPos +
+                Mathf.Sin(bobTimer) * amount;
+
+            cameraHolder.localPosition = pos;
+        }
+        else
+        {
+            bobTimer = 0;
+
+            Vector3 pos =
+                cameraHolder.localPosition;
+
+            pos.y = Mathf.Lerp(
+                pos.y,
+                defaultYPos,
+                Time.deltaTime * 10f
+            );
+
+            cameraHolder.localPosition = pos;
+        }
+    }
+
+    // =====================================================
+    // MOVE
+    // =====================================================
+
     void Move()
     {
         Vector2 input = Vector2.zero;
 
         if (Keyboard.current != null)
         {
-            if (Keyboard.current.wKey.isPressed) input.y += 1;
-            if (Keyboard.current.sKey.isPressed) input.y -= 1;
-            if (Keyboard.current.aKey.isPressed) input.x -= 1;
-            if (Keyboard.current.dKey.isPressed) input.x += 1;
+            if (Keyboard.current.wKey.isPressed)
+                input.y += 1;
+
+            if (Keyboard.current.sKey.isPressed)
+                input.y -= 1;
+
+            if (Keyboard.current.aKey.isPressed)
+                input.x -= 1;
+
+            if (Keyboard.current.dKey.isPressed)
+                input.x += 1;
         }
 
-        Vector3 move = (transform.forward * input.y + transform.right * input.x).normalized;
+        Vector3 move =
+            (transform.forward * input.y +
+             transform.right * input.x).normalized;
 
-        float speed = Keyboard.current.leftShiftKey.isPressed
+        float speed =
+            Keyboard.current.leftShiftKey.isPressed
             ? sprintSpeed
             : walkSpeed;
 
-        controller.Move(move * speed * Time.deltaTime);
+        controller.Move(
+            move * speed * Time.deltaTime
+        );
 
         if (controller.isGrounded)
         {
@@ -105,28 +268,66 @@ private float bobTimer;
 
             if (Keyboard.current.spaceKey.wasPressedThisFrame)
             {
-                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                velocity.y =
+                    Mathf.Sqrt(
+                        jumpHeight * -2f * gravity
+                    );
             }
         }
 
-        velocity.y += gravity * Time.deltaTime;
-        controller.Move(velocity * Time.deltaTime);
+        velocity.y +=
+            gravity * Time.deltaTime;
+
+        controller.Move(
+            velocity * Time.deltaTime
+        );
     }
+
+    // =====================================================
+    // LOOK
+    // =====================================================
 
     void Look()
     {
         if (Mouse.current == null)
             return;
 
-        Vector2 mouseDelta = Mouse.current.delta.ReadValue();
+        Vector2 mouseDelta =
+            Mouse.current.delta.ReadValue();
 
-        float mouseX = mouseDelta.x * mouseSensitivity;
-        float mouseY = mouseDelta.y * mouseSensitivity;
+        float mouseX =
+            mouseDelta.x * mouseSensitivity;
+
+        float mouseY =
+            mouseDelta.y * mouseSensitivity;
 
         xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -maxLookAngle, maxLookAngle);
 
-        cameraHolder.localRotation = Quaternion.Euler(xRotation, 0, 0);
-        transform.Rotate(Vector3.up * mouseX);
+        xRotation =
+            Mathf.Clamp(
+                xRotation,
+                -maxLookAngle,
+                maxLookAngle
+            );
+
+        cameraHolder.localRotation =
+            Quaternion.Euler(
+                xRotation,
+                0,
+                0
+            );
+
+        transform.Rotate(
+            Vector3.up * mouseX
+        );
+    }
+
+    // =====================================================
+    // CLEANUP
+    // =====================================================
+
+    void OnDisable()
+    {
+        StopBreathing();
     }
 }

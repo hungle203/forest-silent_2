@@ -11,13 +11,30 @@ public class MedkitInventory : MonoBehaviour
     [Header("UI")]
     public GameObject medkitSlot;
 
+    [Header("Sound")]
+    public AudioSource audioSource;
+    public AudioClip healSound;
+
+    [Range(0f, 1f)]
+    public float healVolume = 1f;
+
     void Awake()
     {
         Instance = this;
 
         if (medkitSlot != null)
             medkitSlot.SetActive(false);
+
+        // Nếu chưa kéo AudioSource vào Inspector
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+        }
     }
+
+    // =====================================================
+    // PICKUP MEDKIT
+    // =====================================================
 
     public void PickupMedkit()
     {
@@ -27,8 +44,15 @@ public class MedkitInventory : MonoBehaviour
         if (medkitSlot != null)
             medkitSlot.SetActive(true);
 
-        Debug.Log("Nhặt medkit! Số lượng: " + medkitCount);
+        Debug.Log(
+            "Nhặt medkit! Số lượng: " +
+            medkitCount
+        );
     }
+
+    // =====================================================
+    // USE MEDKIT
+    // =====================================================
 
     public void UseMedkit()
     {
@@ -44,7 +68,8 @@ public class MedkitInventory : MonoBehaviour
         if (player == null)
             return;
 
-        bool healed = player.Heal(healAmount);
+        bool healed =
+            player.Heal(healAmount);
 
         // Máu đầy thì không mất hộp
         if (!healed)
@@ -53,12 +78,35 @@ public class MedkitInventory : MonoBehaviour
             return;
         }
 
+        // =========================
+        // PHÁT ÂM THANH HỒI MÁU
+        // =========================
+
+        if (audioSource != null &&
+            healSound != null)
+        {
+            audioSource.PlayOneShot(
+                healSound,
+                healVolume
+            );
+        }
+
+        // =========================
+        // TRỪ MEDKIT
+        // =========================
+
         medkitCount--;
 
-        Debug.Log("Đã dùng medkit. Còn: " + medkitCount);
+        Debug.Log(
+            "Đã dùng medkit. Còn: " +
+            medkitCount
+        );
 
         // Hết medkit thì ẩn slot 3
-        if (medkitCount <= 0 && medkitSlot != null)
+        if (medkitCount <= 0 &&
+            medkitSlot != null)
+        {
             medkitSlot.SetActive(false);
+        }
     }
 }

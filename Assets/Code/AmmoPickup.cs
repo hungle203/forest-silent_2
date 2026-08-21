@@ -18,6 +18,12 @@ public class AmmoPickup : MonoBehaviour, IInteractable
             gun.AddAmmo(ammoAmount);
         }
 
+
+          if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayPickup();
+        }
+
         Destroy(gameObject);
     }
 }

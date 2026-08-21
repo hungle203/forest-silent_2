@@ -6,12 +6,26 @@ using UnityEngine.AI;
 [RequireComponent(typeof(Animator))]
 public class BossAI : MonoBehaviour
 {
+    // =========================================================
+    // TARGET
+    // =========================================================
+
     [Header("Target")]
     public Transform player;
+
+
+    // =========================================================
+    // MOVEMENT
+    // =========================================================
 
     [Header("Movement")]
     public float moveSpeed = 3.5f;
     public float attackRange = 2.2f;
+
+
+    // =========================================================
+    // ATTACK
+    // =========================================================
 
     [Header("Attack")]
     public float attackDamage = 30f;
@@ -19,8 +33,79 @@ public class BossAI : MonoBehaviour
     public float damageDelay = 0.7f;
     public float attackAnimationTime = 1.3f;
 
+
+    // =========================================================
+    // HEALTH
+    // =========================================================
+
     [Header("Health")]
     public float maxHealth = 500f;
+
+
+    // =========================================================
+    // BOSS AUDIO
+    // =========================================================
+
+    [Header("Boss Audio")]
+
+    public AudioSource audioSource;
+
+    [Tooltip("Tiếng gào / gầm")]
+    public AudioClip[] roarSounds;
+
+    [Tooltip("Tiếng tấn công")]
+    public AudioClip[] attackSounds;
+
+    [Tooltip("Tiếng Boss bị đánh")]
+    public AudioClip[] hurtSounds;
+
+    [Tooltip("Tiếng Boss chết")]
+    public AudioClip[] deathSounds;
+
+    [Tooltip("Tiếng idle")]
+    public AudioClip[] idleSounds;
+
+    [Range(0f, 1f)]
+    public float bossVolume = 1f;
+
+
+    // =========================================================
+    // 3D AUDIO
+    // =========================================================
+
+    [Header("3D Audio")]
+
+    [Range(0f, 1f)]
+    public float spatialBlend = 1f;
+
+    public float minDistance = 3f;
+    public float maxDistance = 25f;
+
+
+    // =========================================================
+    // IDLE SOUND
+    // =========================================================
+
+    [Header("Idle Sound")]
+
+    public float idleSoundMinDelay = 5f;
+    public float idleSoundMaxDelay = 10f;
+
+    private float nextIdleSound;
+
+
+    // =========================================================
+    // AUDIO STATE
+    // =========================================================
+
+    // FALSE = Boss chưa được phép phát âm thanh
+    // TRUE  = Cutscene đã kết thúc, Boss được phát âm thanh
+    private bool bossAudioEnabled = false;
+
+
+    // =========================================================
+    // VARIABLES
+    // =========================================================
 
     private float currentHealth;
     private float nextAttackTime;
@@ -28,31 +113,74 @@ public class BossAI : MonoBehaviour
     private NavMeshAgent agent;
     private Animator anim;
 
-    private bool attacking;
-    private bool dead;
+    private bool attacking = false;
+    private bool dead = false;
+
+
+    // =========================================================
+    // START
+    // =========================================================
 
     void Start()
     {
-        // =========================
-        // GET COMPONENTS
-        // =========================
+        // =====================================================
+        // COMPONENTS
+        // =====================================================
 
         agent = GetComponent<NavMeshAgent>();
         anim = GetComponent<Animator>();
 
-        // =========================
+
+        // =====================================================
+        // AUDIO SOURCE
+        // =====================================================
+
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+        }
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
+
+
+        // =====================================================
+        // AUDIO CONFIG
+        // =====================================================
+
+        audioSource.playOnAwake = false;
+        audioSource.loop = false;
+
+        audioSource.spatialBlend = spatialBlend;
+
+        audioSource.minDistance = minDistance;
+        audioSource.maxDistance = maxDistance;
+
+        audioSource.rolloffMode =
+            AudioRolloffMode.Logarithmic;
+
+        audioSource.volume = 1f;
+
+        audioSource.Stop();
+
+
+        // =====================================================
         // HEALTH
-        // =========================
+        // =====================================================
 
         currentHealth = maxHealth;
 
-        // =========================
+
+        // =====================================================
         // FIND PLAYER
-        // =========================
+        // =====================================================
 
         if (player == null)
         {
-            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            GameObject p =
+                GameObject.FindGameObjectWithTag("Player");
 
             if (p != null)
             {
@@ -60,55 +188,151 @@ public class BossAI : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("BossAI: Không tìm thấy Player có Tag = Player.");
+                Debug.LogWarning(
+                    "BossAI: Không tìm thấy Player có Tag = Player."
+                );
             }
         }
 
-        // =========================
+
+        // =====================================================
         // NAVMESH
-        // =========================
+        // =====================================================
 
         agent.speed = moveSpeed;
 
-        // Boss dừng ở khoảng cách này
-        agent.stoppingDistance = attackRange * 0.8f;
+        agent.stoppingDistance =
+            attackRange * 0.8f;
 
-        // Script tự xoay Boss
+        // Boss tự xoay
         agent.updateRotation = false;
 
-        // =========================
+
+        // =====================================================
         // ANIMATOR
-        // =========================
+        // =====================================================
 
         anim.SetBool("IsWalking", false);
         anim.SetBool("IsAttacking", false);
         anim.SetBool("IsDead", false);
+
+
+        // =====================================================
+        // AUDIO BAN ĐẦU TẮT
+        // =====================================================
+
+        bossAudioEnabled = false;
+
+        SetNextIdleSound();
+
+        Debug.Log(
+            "BossAI: Boss Audio đang TẮT - chờ Cutscene kết thúc."
+        );
     }
+
+
+    // =========================================================
+    // ENABLE BOSS AUDIO
+    // =========================================================
+
+    public void EnableBossAudio()
+    {
+        if (dead)
+            return;
+
+        bossAudioEnabled = true;
+
+        SetNextIdleSound();
+
+        Debug.Log(
+            "================================="
+        );
+
+        Debug.Log(
+            "=== BOSS AUDIO ENABLED ==="
+        );
+
+        Debug.Log(
+            "================================="
+        );
+
+
+        // =====================================================
+        // BOSS GÀO NGAY KHI BẮT ĐẦU CHIẾN ĐẤU
+        // =====================================================
+
+        PlayRoar();
+    }
+
+
+    // =========================================================
+    // DISABLE BOSS AUDIO
+    // =========================================================
+
+    public void DisableBossAudio()
+    {
+        bossAudioEnabled = false;
+
+        if (audioSource != null)
+        {
+            audioSource.Stop();
+        }
+
+        Debug.Log(
+            "=== BOSS AUDIO DISABLED ==="
+        );
+    }
+
+
+    // =========================================================
+    // UPDATE
+    // =========================================================
 
     void Update()
     {
         if (dead || player == null)
             return;
 
-        // Nếu Boss không còn nằm trên NavMesh
+
+        // =====================================================
+        // IDLE SOUND
+        // =====================================================
+
+        if (!attacking)
+        {
+            PlayIdleSound();
+        }
+
+
+        // =====================================================
+        // NAVMESH
+        // =====================================================
+
         if (!agent.isOnNavMesh)
         {
-            anim.SetBool("IsWalking", false);
+            anim.SetBool(
+                "IsWalking",
+                false
+            );
+
             return;
         }
 
-        // =========================
-        // DISTANCE TO PLAYER
-        // =========================
 
-        float distance = Vector3.Distance(
-            transform.position,
-            player.position
-        );
+        // =====================================================
+        // DISTANCE
+        // =====================================================
 
-        // =========================
+        float distance =
+            Vector3.Distance(
+                transform.position,
+                player.position
+            );
+
+
+        // =====================================================
         // ATTACK
-        // =========================
+        // =====================================================
 
         if (distance <= attackRange)
         {
@@ -116,7 +340,8 @@ public class BossAI : MonoBehaviour
 
             FacePlayer();
 
-            if (!attacking && Time.time >= nextAttackTime)
+            if (!attacking &&
+                Time.time >= nextAttackTime)
             {
                 StartCoroutine(Attack());
             }
@@ -124,12 +349,14 @@ public class BossAI : MonoBehaviour
             return;
         }
 
-        // =========================
+
+        // =====================================================
         // CHASE
-        // =========================
+        // =====================================================
 
         ChasePlayer();
     }
+
 
     // =========================================================
     // CHASE PLAYER
@@ -140,29 +367,38 @@ public class BossAI : MonoBehaviour
         if (!agent.isOnNavMesh)
             return;
 
-        // Cho phép Boss di chuyển
         agent.isStopped = false;
 
-        // Tìm đường đến Player
-        agent.SetDestination(player.position);
+        agent.SetDestination(
+            player.position
+        );
 
-        // Không attack trong lúc chạy
-        anim.SetBool("IsAttacking", false);
 
-        // =========================
-        // WALK ANIMATION
-        // =========================
+        // =====================================================
+        // ANIMATION
+        // =====================================================
 
-        bool isMoving = agent.velocity.sqrMagnitude > 0.01f;
+        anim.SetBool(
+            "IsAttacking",
+            false
+        );
 
-        anim.SetBool("IsWalking", isMoving);
+        bool isMoving =
+            agent.velocity.sqrMagnitude > 0.01f;
 
-        // =========================
+        anim.SetBool(
+            "IsWalking",
+            isMoving
+        );
+
+
+        // =====================================================
         // ROTATION
-        // =========================
+        // =====================================================
 
         FacePlayer();
     }
+
 
     // =========================================================
     // STOP MOVEMENT
@@ -176,8 +412,12 @@ public class BossAI : MonoBehaviour
             agent.velocity = Vector3.zero;
         }
 
-        anim.SetBool("IsWalking", false);
+        anim.SetBool(
+            "IsWalking",
+            false
+        );
     }
+
 
     // =========================================================
     // FACE PLAYER
@@ -185,7 +425,12 @@ public class BossAI : MonoBehaviour
 
     void FacePlayer()
     {
-        Vector3 direction = player.position - transform.position;
+        if (player == null)
+            return;
+
+        Vector3 direction =
+            player.position -
+            transform.position;
 
         direction.y = 0f;
 
@@ -195,12 +440,14 @@ public class BossAI : MonoBehaviour
         Quaternion targetRotation =
             Quaternion.LookRotation(direction);
 
-        transform.rotation = Quaternion.Slerp(
-            transform.rotation,
-            targetRotation,
-            8f * Time.deltaTime
-        );
+        transform.rotation =
+            Quaternion.Slerp(
+                transform.rotation,
+                targetRotation,
+                8f * Time.deltaTime
+            );
     }
+
 
     // =========================================================
     // ATTACK
@@ -210,42 +457,74 @@ public class BossAI : MonoBehaviour
     {
         attacking = true;
 
-        nextAttackTime = Time.time + attackCooldown;
+        nextAttackTime =
+            Time.time +
+            attackCooldown;
 
-        // Dừng Boss
         StopMovement();
 
-        // Đảm bảo Boss nhìn Player
         FacePlayer();
 
-        // Chạy Attack animation
-        anim.SetBool("IsWalking", false);
-        anim.SetBool("IsAttacking", true);
 
-        // =========================
+        // =====================================================
+        // ANIMATION
+        // =====================================================
+
+        anim.SetBool(
+            "IsWalking",
+            false
+        );
+
+        anim.SetBool(
+            "IsAttacking",
+            true
+        );
+
+
+        // =====================================================
+        // ATTACK SOUND
+        // =====================================================
+
+        PlayRandomSound(
+            attackSounds
+        );
+
+
+        // =====================================================
         // DAMAGE DELAY
-        // =========================
+        // =====================================================
 
-        yield return new WaitForSeconds(damageDelay);
+        yield return new WaitForSeconds(
+            damageDelay
+        );
+
 
         if (!dead)
         {
             DealDamage();
         }
 
-        // =========================
-        // CHỜ ANIMATION
-        // =========================
 
-        yield return new WaitForSeconds(attackAnimationTime);
+        // =====================================================
+        // WAIT ATTACK ANIMATION
+        // =====================================================
+
+        yield return new WaitForSeconds(
+            attackAnimationTime
+        );
+
 
         if (!dead)
         {
-            anim.SetBool("IsAttacking", false);
+            anim.SetBool(
+                "IsAttacking",
+                false
+            );
         }
 
         attacking = false;
     }
+
 
     // =========================================================
     // DEAL DAMAGE
@@ -256,23 +535,28 @@ public class BossAI : MonoBehaviour
         if (player == null)
             return;
 
-        float distance = Vector3.Distance(
-            transform.position,
-            player.position
-        );
+        float distance =
+            Vector3.Distance(
+                transform.position,
+                player.position
+            );
 
-        // Player đã chạy ra ngoài tầm đánh
-        if (distance > attackRange + 0.5f)
+        if (distance >
+            attackRange + 0.5f)
             return;
+
 
         PlayerHealth health =
             player.GetComponent<PlayerHealth>();
 
         if (health != null)
         {
-            health.TakeDamage(attackDamage);
+            health.TakeDamage(
+                attackDamage
+            );
         }
     }
+
 
     // =========================================================
     // TAKE DAMAGE
@@ -286,14 +570,30 @@ public class BossAI : MonoBehaviour
         currentHealth -= damage;
 
         Debug.Log(
-            "Boss HP: " + currentHealth
+            "Boss HP: " +
+            currentHealth
         );
+
+
+        // =====================================================
+        // HURT SOUND
+        // =====================================================
+
+        PlayRandomSound(
+            hurtSounds
+        );
+
+
+        // =====================================================
+        // DEAD
+        // =====================================================
 
         if (currentHealth <= 0)
         {
             Die();
         }
     }
+
 
     // =========================================================
     // DIE
@@ -308,7 +608,20 @@ public class BossAI : MonoBehaviour
 
         StopAllCoroutines();
 
-        // Dừng NavMesh
+
+        // =====================================================
+        // DEATH SOUND
+        // =====================================================
+
+        PlayRandomSound(
+            deathSounds
+        );
+
+
+        // =====================================================
+        // STOP NAVMESH
+        // =====================================================
+
         if (agent.isOnNavMesh)
         {
             agent.isStopped = true;
@@ -316,14 +629,143 @@ public class BossAI : MonoBehaviour
 
         agent.enabled = false;
 
-        // Tắt các animation khác
-        anim.SetBool("IsWalking", false);
-        anim.SetBool("IsAttacking", false);
 
-        // Chạy Dead
-        anim.SetBool("IsDead", true);
+        // =====================================================
+        // ANIMATION
+        // =====================================================
 
-        // Xóa Boss sau 10 giây
-        Destroy(gameObject, 10f);
+        anim.SetBool(
+            "IsWalking",
+            false
+        );
+
+        anim.SetBool(
+            "IsAttacking",
+            false
+        );
+
+        anim.SetBool(
+            "IsDead",
+            true
+        );
+
+
+        // =====================================================
+        // DESTROY BOSS
+        // =====================================================
+
+        Destroy(
+            gameObject,
+            10f
+        );
+    }
+
+
+    // =========================================================
+    // IDLE SOUND
+    // =========================================================
+
+    void PlayIdleSound()
+    {
+        // Chưa kết thúc cutscene
+        // => KHÔNG PHÁT ÂM THANH
+
+        if (!bossAudioEnabled)
+            return;
+
+
+        if (idleSounds == null ||
+            idleSounds.Length == 0)
+            return;
+
+
+        if (Time.time >= nextIdleSound)
+        {
+            PlayRandomSound(
+                idleSounds
+            );
+
+            SetNextIdleSound();
+        }
+    }
+
+
+    // =========================================================
+    // SET NEXT IDLE SOUND
+    // =========================================================
+
+    void SetNextIdleSound()
+    {
+        nextIdleSound =
+            Time.time +
+            Random.Range(
+                idleSoundMinDelay,
+                idleSoundMaxDelay
+            );
+    }
+
+
+    // =========================================================
+    // ROAR
+    // =========================================================
+
+    public void PlayRoar()
+    {
+        PlayRandomSound(
+            roarSounds
+        );
+    }
+
+
+    // =========================================================
+    // RANDOM SOUND
+    // =========================================================
+
+    void PlayRandomSound(
+        AudioClip[] sounds
+    )
+    {
+        // =====================================================
+        // QUAN TRỌNG
+        // =====================================================
+        // Nếu Cutscene chưa kết thúc
+        // => KHÔNG PHÁT BẤT KỲ BOSS SFX NÀO
+
+        if (!bossAudioEnabled)
+            return;
+
+
+        if (sounds == null ||
+            sounds.Length == 0)
+            return;
+
+
+        if (audioSource == null)
+            return;
+
+
+        AudioClip clip =
+            sounds[
+                Random.Range(
+                    0,
+                    sounds.Length
+                )
+            ];
+
+
+        if (clip == null)
+            return;
+
+
+        audioSource.PlayOneShot(
+            clip,
+            bossVolume
+        );
+
+
+        Debug.Log(
+            "Boss SFX: " +
+            clip.name
+        );
     }
 }

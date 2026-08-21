@@ -17,6 +17,12 @@ public class FlashlightPickup : MonoBehaviour, IInteractable
             flash.PickupFlashlight();
         }
 
+         // Âm thanh nhặt đèn pin 
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayPickup();
+        }
+
         Destroy(gameObject);
     }
 }

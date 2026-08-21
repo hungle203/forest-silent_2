@@ -11,6 +11,12 @@ public class KatanaPickup : MonoBehaviour, IInteractable
     {
         WeaponManager.Instance.PickupKatana();
 
+         // Âm thanh kiếm 
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayPickup();
+        }
+
         Destroy(gameObject);
     }
 }

@@ -14,6 +14,12 @@ public class BatteryPickup : MonoBehaviour, IInteractable
             UIManager.Instance.AddBatteryCount(1);
         }
 
+
+          if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayPickup();
+        }
+
         Destroy(gameObject);
     }
 }

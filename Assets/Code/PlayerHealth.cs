@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class PlayerHealth : MonoBehaviour
 {
@@ -7,10 +8,30 @@ public class PlayerHealth : MonoBehaviour
 
     private bool isDead;
 
+    [Header("Damage Sound")]
+    public AudioSource audioSource;
+    public AudioClip damageSound;
+
+    [Range(0f, 1f)]
+    public float damageVolume = 1f;
+
+    [Header("Death")]
+    public string mainMenuScene = "MainMenu";
+    public float returnToMenuDelay = 2f;
+
     private void Start()
     {
         currentHealth = maxHealth;
+
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+        }
     }
+
+    // =========================
+    // NHẬN DAMAGE
+    // =========================
 
     public void TakeDamage(float damage)
     {
@@ -19,11 +40,27 @@ public class PlayerHealth : MonoBehaviour
 
         currentHealth -= damage;
 
-        // Không cho máu xuống dưới 0
-        currentHealth = Mathf.Max(currentHealth, 0f);
+        currentHealth = Mathf.Max(
+            currentHealth,
+            0f
+        );
 
-        Debug.Log("Player HP: " + currentHealth);
+        Debug.Log(
+            "Player HP: " +
+            currentHealth
+        );
 
+        // Âm thanh nhận damage
+        if (audioSource != null &&
+            damageSound != null)
+        {
+            audioSource.PlayOneShot(
+                damageSound,
+                damageVolume
+            );
+        }
+
+        // Kiểm tra chết
         if (currentHealth <= 0)
         {
             Die();
@@ -33,13 +70,12 @@ public class PlayerHealth : MonoBehaviour
     // =========================
     // HỒI MÁU
     // =========================
+
     public bool Heal(float amount)
     {
-        // Đã chết thì không hồi
         if (isDead)
             return false;
 
-        // Máu đã đầy thì không nhặt
         if (currentHealth >= maxHealth)
         {
             Debug.Log("Máu đang đầy!");
@@ -48,24 +84,35 @@ public class PlayerHealth : MonoBehaviour
 
         currentHealth += amount;
 
-        // Không vượt quá máu tối đa
         currentHealth = Mathf.Min(
             currentHealth,
             maxHealth
         );
 
-        Debug.Log("Hồi máu: +" + amount +
-                  " | Player HP: " + currentHealth);
+        Debug.Log(
+            "Hồi máu: +" +
+            amount +
+            " | Player HP: " +
+            currentHealth
+        );
 
         return true;
     }
 
+    // =========================
+    // PLAYER DIE
+    // =========================
+
     private void Die()
     {
+        if (isDead)
+            return;
+
         isDead = true;
 
         Debug.Log("PLAYER DIED");
 
+        // Tắt di chuyển
         PlayerMovement movement =
             GetComponent<PlayerMovement>();
 
@@ -74,11 +121,27 @@ public class PlayerHealth : MonoBehaviour
             movement.enabled = false;
         }
 
-        // TODO:
-        // Hiện Game Over
-        // Respawn
-        // Animation chết
+        // Chờ một chút rồi về Main Menu
+        Invoke(
+            nameof(ReturnToMainMenu),
+            returnToMenuDelay
+        );
     }
+
+    // =========================
+    // RETURN MAIN MENU
+    // =========================
+
+    private void ReturnToMainMenu()
+    {
+        Time.timeScale = 1f;
+
+        SceneManager.LoadScene(mainMenuScene);
+    }
+
+    // =========================
+    // GET HEALTH
+    // =========================
 
     public float GetHealth()
     {

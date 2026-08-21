@@ -17,10 +17,21 @@ public class GunController : MonoBehaviour
 
     float nextFireTime;
 
+    [Header("Gun Sound")]
+    public AudioSource audioSource;
+    public AudioClip shootSound;
+    public AudioClip reloadSound;
+
+    [Range(0f, 1f)]
+    public float shootVolume = 1f;
+
+    [Range(0f, 1f)]
+    public float reloadVolume = 1f;
+
     [Header("Ammo")]
-    public int magazineSize = 69;      // sức chứa băng
-    public int currentAmmo = 69;       // đạn trong băng
-    public int reserveAmmo = 69;       // đạn dự trữ
+    public int magazineSize = 69;
+    public int currentAmmo = 69;
+    public int reserveAmmo = 69;
     public float reloadTime = 2f;
 
     bool isReloading;
@@ -38,32 +49,51 @@ public class GunController : MonoBehaviour
     {
         originalPos = gunHolder.localPosition;
         targetPos = originalPos;
+
+        // Nếu chưa kéo AudioSource vào Inspector
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+        }
     }
 
     void Update()
     {
-        // Recoil
+        // =========================
+        // RECOIL
+        // =========================
+
         gunHolder.localPosition = Vector3.Lerp(
             gunHolder.localPosition,
             targetPos,
-            recoilSpeed * Time.deltaTime);
+            recoilSpeed * Time.deltaTime
+        );
 
         targetPos = Vector3.Lerp(
             targetPos,
             originalPos,
-            returnSpeed * Time.deltaTime);
+            returnSpeed * Time.deltaTime
+        );
 
         if (isReloading)
             return;
 
-        // Reload bằng phím R
-        if (Keyboard.current.rKey.wasPressedThisFrame)
+        // =========================
+        // RELOAD BẰNG R
+        // =========================
+
+        if (Keyboard.current != null &&
+            Keyboard.current.rKey.wasPressedThisFrame)
         {
             StartCoroutine(Reload());
         }
 
-        // Bắn
-        if (Mouse.current.leftButton.isPressed &&
+        // =========================
+        // BẮN
+        // =========================
+
+        if (Mouse.current != null &&
+            Mouse.current.leftButton.isPressed &&
             Time.time >= nextFireTime &&
             currentAmmo > 0)
         {
@@ -74,7 +104,10 @@ public class GunController : MonoBehaviour
             Shoot();
         }
 
-        // Tự reload khi hết đạn
+        // =========================
+        // TỰ RELOAD
+        // =========================
+
         if (currentAmmo <= 0 &&
             reserveAmmo > 0 &&
             !isReloading)
@@ -83,42 +116,117 @@ public class GunController : MonoBehaviour
         }
     }
 
+    // =====================================================
+    // SHOOT
+    // =====================================================
+
     void Shoot()
     {
-        muzzleFlash.Play();
+        // =========================
+        // ÂM THANH BẮN
+        // =========================
 
-        // Recoil
-        targetPos = originalPos + recoilKick;
+        if (audioSource != null &&
+            shootSound != null)
+        {
+            audioSource.PlayOneShot(
+                shootSound,
+                shootVolume
+            );
+        }
 
-        Ray ray = playerCamera.ViewportPointToRay(
-            new Vector3(0.5f, 0.5f));
+        // =========================
+        // MUZZLE FLASH
+        // =========================
+
+        if (muzzleFlash != null)
+        {
+            muzzleFlash.Play();
+        }
+
+        // =========================
+        // RECOIL
+        // =========================
+
+        targetPos =
+            originalPos + recoilKick;
+
+        // =========================
+        // RAYCAST
+        // =========================
+
+        Ray ray =
+            playerCamera.ViewportPointToRay(
+                new Vector3(0.5f, 0.5f)
+            );
 
         Vector3 hitPoint;
 
-        if (Physics.Raycast(ray, out RaycastHit hit, range))
+        if (Physics.Raycast(
+            ray,
+            out RaycastHit hit,
+            range))
         {
             hitPoint = hit.point;
+
             Debug.Log(hit.collider.name);
+
+            // Nếu bắn Zombie
+            ZombieAI zombie =
+                hit.collider.GetComponentInParent<ZombieAI>();
+
+            if (zombie != null)
+            {
+                zombie.TakeDamage(damage);
+
+                zombie.SpawnBlood(
+                    hit.point,
+                    hit.normal
+                );
+            }
         }
         else
         {
-            hitPoint = ray.origin + ray.direction * range;
+            hitPoint =
+                ray.origin +
+                ray.direction * range;
         }
 
-        // Spawn viên đạn
-        Vector3 dir = (hitPoint - firePoint.position).normalized;
+        // =========================
+        // SPAWN BULLET
+        // =========================
 
-        GameObject bullet = Instantiate(
-            bulletPrefab,
-            firePoint.position,
-            Quaternion.LookRotation(dir));
+        Vector3 dir =
+            (hitPoint - firePoint.position)
+            .normalized;
 
-        // Nếu model đạn nằm theo trục Y
-        bullet.transform.Rotate(-90, 0, 0);
+        if (bulletPrefab != null)
+        {
+            GameObject bullet =
+                Instantiate(
+                    bulletPrefab,
+                    firePoint.position,
+                    Quaternion.LookRotation(dir)
+                );
+
+            // Nếu model đạn nằm theo trục Y
+            bullet.transform.Rotate(
+                -90,
+                0,
+                0
+            );
+        }
     }
+
+    // =====================================================
+    // RELOAD
+    // =====================================================
 
     IEnumerator Reload()
     {
+        if (isReloading)
+            yield break;
+
         if (currentAmmo == magazineSize)
             yield break;
 
@@ -129,20 +237,54 @@ public class GunController : MonoBehaviour
 
         Debug.Log("Reloading...");
 
-        yield return new WaitForSeconds(reloadTime);
+        // =========================
+        // ÂM THANH NẠP ĐẠN
+        // =========================
 
-        int needAmmo = magazineSize - currentAmmo;
+        if (audioSource != null &&
+            reloadSound != null)
+        {
+            audioSource.PlayOneShot(
+                reloadSound,
+                reloadVolume
+            );
+        }
 
-        int ammoToLoad = Mathf.Min(needAmmo, reserveAmmo);
+        // =========================
+        // CHỜ RELOAD
+        // =========================
+
+        yield return new WaitForSeconds(
+            reloadTime
+        );
+
+        int needAmmo =
+            magazineSize - currentAmmo;
+
+        int ammoToLoad =
+            Mathf.Min(
+                needAmmo,
+                reserveAmmo
+            );
 
         currentAmmo += ammoToLoad;
 
         reserveAmmo -= ammoToLoad;
 
         isReloading = false;
+
+        Debug.Log(
+            "Reload complete: " +
+            currentAmmo +
+            "/" +
+            reserveAmmo
+        );
     }
 
-    // Hàm dùng khi nhặt hộp đạn
+    // =====================================================
+    // ADD AMMO
+    // =====================================================
+
     public void AddAmmo(int amount)
     {
         reserveAmmo += amount;

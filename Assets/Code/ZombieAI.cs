@@ -27,6 +27,31 @@ public class ZombieAI : MonoBehaviour
     [Header("Blood")]
     public GameObject bloodEffect;
 
+    // =====================================================
+    // ZOMBIE AUDIO
+    // =====================================================
+
+    [Header("Zombie Audio")]
+    public AudioSource audioSource;
+
+    public AudioClip[] idleSounds;
+    public AudioClip roarSound;
+    public AudioClip[] attackSounds;
+    public AudioClip[] hurtSounds;
+    public AudioClip[] deathSounds;
+
+    [Range(0f, 1f)]
+    public float zombieVolume = 1f;
+
+    public float idleSoundMinDelay = 4f;
+    public float idleSoundMaxDelay = 8f;
+
+    private float nextIdleSound;
+
+    // =====================================================
+    // PERFORMANCE
+    // =====================================================
+
     [Header("Performance")]
     [Tooltip("AI cập nhật bao nhiêu lần mỗi giây")]
     public float aiUpdateRate = 10f;
@@ -44,10 +69,13 @@ public class ZombieAI : MonoBehaviour
 
     float aiTimer;
 
-    // Cache khoảng cách bình phương
     float detectRangeSqr;
     float runRangeSqr;
     float attackRangeSqr;
+
+    // =====================================================
+    // START
+    // =====================================================
 
     void Start()
     {
@@ -56,96 +84,172 @@ public class ZombieAI : MonoBehaviour
 
         currentHealth = maxHealth;
 
-        // Cache để không phải tính lại mỗi frame
         detectRangeSqr = detectRange * detectRange;
         runRangeSqr = runRange * runRange;
         attackRangeSqr = attackRange * attackRange;
 
         if (player == null)
         {
-            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            GameObject p =
+                GameObject.FindGameObjectWithTag("Player");
 
             if (p != null)
                 player = p.transform;
         }
 
+        // Nếu chưa kéo AudioSource
+        if (audioSource == null)
+        {
+            audioSource =
+                GetComponent<AudioSource>();
+        }
+
+        // Thời gian idle sound đầu tiên
+        nextIdleSound =
+            Time.time +
+            Random.Range(
+                idleSoundMinDelay,
+                idleSoundMaxDelay
+            );
+
         aiTimer = Random.Range(0f, 0.1f);
     }
+
+    // =====================================================
+    // UPDATE
+    // =====================================================
 
     void Update()
     {
         if (dead || player == null)
             return;
 
-        // Không cần tính AI mỗi frame
+        // =========================
+        // IDLE SOUND
+        // =========================
+
+        if (!playerDetected &&
+            !roaring &&
+            !attacking &&
+            !gettingHit)
+        {
+            if (Time.time >= nextIdleSound)
+            {
+                PlayRandomSound(idleSounds);
+
+                nextIdleSound =
+                    Time.time +
+                    Random.Range(
+                        idleSoundMinDelay,
+                        idleSoundMaxDelay
+                    );
+            }
+        }
+
+        // =========================
+        // AI TIMER
+        // =========================
+
         aiTimer -= Time.deltaTime;
 
         if (aiTimer > 0f)
             return;
 
-        aiTimer = 1f / aiUpdateRate;
+        aiTimer =
+            1f / aiUpdateRate;
 
         UpdateAI();
     }
 
+    // =====================================================
+    // AI
+    // =====================================================
+
     void UpdateAI()
     {
-        if (attacking || roaring || gettingHit)
+        if (attacking ||
+            roaring ||
+            gettingHit)
             return;
 
-        Vector3 offset = transform.position - player.position;
+        Vector3 offset =
+            transform.position -
+            player.position;
 
-        float distanceSqr = offset.sqrMagnitude;
+        float distanceSqr =
+            offset.sqrMagnitude;
 
-        //--------------------------------
-        // Phát hiện player
-        //--------------------------------
+        // =========================
+        // PHÁT HIỆN PLAYER
+        // =========================
+
         if (!playerDetected)
         {
             if (distanceSqr <= detectRangeSqr)
             {
                 playerDetected = true;
 
-                StartCoroutine(RoarCoroutine());
+                StartCoroutine(
+                    RoarCoroutine()
+                );
             }
 
             return;
         }
 
-        //--------------------------------
-        // Tấn công
-        //--------------------------------
+        // =========================
+        // ATTACK
+        // =========================
+
         if (distanceSqr <= attackRangeSqr)
         {
-            StartCoroutine(AttackCoroutine());
+            StartCoroutine(
+                AttackCoroutine()
+            );
+
             return;
         }
 
-        //--------------------------------
-        // Đuổi player
-        //--------------------------------
+        // =========================
+        // CHASE
+        // =========================
+
         if (!agent.enabled)
             return;
 
         agent.isStopped = false;
 
-        // Chỉ SetDestination khi cần
-        agent.SetDestination(player.position);
+        agent.SetDestination(
+            player.position
+        );
 
-        //--------------------------------
-        // Walk / Run
-        //--------------------------------
+        // =========================
+        // WALK / RUN
+        // =========================
+
         if (distanceSqr <= runRangeSqr)
         {
             agent.speed = runSpeed;
-            anim.SetFloat("Speed", 1f);
+
+            anim.SetFloat(
+                "Speed",
+                1f
+            );
         }
         else
         {
             agent.speed = walkSpeed;
-            anim.SetFloat("Speed", 0.5f);
+
+            anim.SetFloat(
+                "Speed",
+                0.5f
+            );
         }
     }
+
+    // =====================================================
+    // ROAR
+    // =====================================================
 
     IEnumerator RoarCoroutine()
     {
@@ -153,12 +257,22 @@ public class ZombieAI : MonoBehaviour
 
         agent.isStopped = true;
 
-        anim.CrossFade("roar", 0.15f);
+        anim.CrossFade(
+            "roar",
+            0.15f
+        );
+
+        // 🔊 TIẾNG GẦM
+        PlaySound(roarSound);
 
         yield return new WaitForSeconds(2f);
 
         roaring = false;
     }
+
+    // =====================================================
+    // ATTACK
+    // =====================================================
 
     IEnumerator AttackCoroutine()
     {
@@ -166,8 +280,11 @@ public class ZombieAI : MonoBehaviour
 
         agent.isStopped = true;
 
-        // Quay mặt về player
-        Vector3 dir = player.position - transform.position;
+        // Quay mặt về Player
+        Vector3 dir =
+            player.position -
+            transform.position;
+
         dir.y = 0f;
 
         if (dir.sqrMagnitude > 0.001f)
@@ -176,12 +293,16 @@ public class ZombieAI : MonoBehaviour
                 Quaternion.LookRotation(dir);
         }
 
-        int randomAttack = Random.Range(1, 5);
+        int randomAttack =
+            Random.Range(1, 5);
 
         anim.CrossFade(
             "attack" + randomAttack,
             0.1f
         );
+
+        // 🔊 TIẾNG TẤN CÔNG
+        PlayRandomSound(attackSounds);
 
         // Chờ animation tới lúc đánh
         yield return new WaitForSeconds(0.7f);
@@ -192,6 +313,10 @@ public class ZombieAI : MonoBehaviour
 
         attacking = false;
     }
+
+    // =====================================================
+    // TAKE DAMAGE
+    // =====================================================
 
     public void TakeDamage(float damage)
     {
@@ -206,8 +331,14 @@ public class ZombieAI : MonoBehaviour
             return;
         }
 
-        StartCoroutine(GetHitCoroutine());
+        StartCoroutine(
+            GetHitCoroutine()
+        );
     }
+
+    // =====================================================
+    // GET HIT
+    // =====================================================
 
     IEnumerator GetHitCoroutine()
     {
@@ -216,12 +347,22 @@ public class ZombieAI : MonoBehaviour
         if (agent.enabled)
             agent.isStopped = true;
 
-        anim.CrossFade("gethit", 0.1f);
+        anim.CrossFade(
+            "gethit",
+            0.1f
+        );
+
+        // 🔊 TIẾNG BỊ ĐÁNH
+        PlayRandomSound(hurtSounds);
 
         yield return new WaitForSeconds(0.6f);
 
         gettingHit = false;
     }
+
+    // =====================================================
+    // DIE
+    // =====================================================
 
     void Die()
     {
@@ -235,49 +376,68 @@ public class ZombieAI : MonoBehaviour
             agent.enabled = false;
         }
 
-        int randomDeath = Random.Range(1, 3);
+        int randomDeath =
+            Random.Range(1, 3);
 
         anim.CrossFade(
             "death" + randomDeath,
             0.1f
         );
 
-        Destroy(gameObject, 10f);
+        // 🔊 TIẾNG CHẾT
+        PlayRandomSound(deathSounds);
+
+        Destroy(
+            gameObject,
+            10f
+        );
     }
+
+    // =====================================================
+    // DEAL DAMAGE
+    // =====================================================
 
     public void DealDamage()
     {
         if (player == null)
             return;
 
-        Vector3 offset = transform.position - player.position;
+        Vector3 offset =
+            transform.position -
+            player.position;
 
-        float distanceSqr = offset.sqrMagnitude;
+        float distanceSqr =
+            offset.sqrMagnitude;
 
-        float damageRange = attackRange + 0.5f;
+        float damageRange =
+            attackRange + 0.5f;
 
-        if (distanceSqr <= damageRange * damageRange)
+        if (distanceSqr <=
+            damageRange * damageRange)
         {
             PlayerHealth hp =
                 player.GetComponent<PlayerHealth>();
-if (hp != null)
-{
-    hp.TakeDamage(attackDamage);
 
-    DamageVignette vignette =
-        FindFirstObjectByType<DamageVignette>();
+            if (hp != null)
+            {
+                hp.TakeDamage(
+                    attackDamage
+                );
 
-    if (vignette != null)
-    {
-        vignette.ShowDamage();
-    }
-}
+                DamageVignette vignette =
+                    FindFirstObjectByType<DamageVignette>();
+
+                if (vignette != null)
+                {
+                    vignette.ShowDamage();
+                }
+            }
         }
     }
 
-    // ========================================
+    // =====================================================
     // BLOOD
-    // ========================================
+    // =====================================================
 
     public void SpawnBlood(
         Vector3 hitPoint,
@@ -286,34 +446,78 @@ if (hp != null)
         if (bloodEffect == null)
             return;
 
-        GameObject blood = Instantiate(
-            bloodEffect,
-            hitPoint,
-            Quaternion.LookRotation(hitNormal)
-        );
+        GameObject blood =
+            Instantiate(
+                bloodEffect,
+                hitPoint,
+                Quaternion.LookRotation(hitNormal)
+            );
 
-        Destroy(blood, 2f);
+        Destroy(
+            blood,
+            2f
+        );
     }
 
-    // ========================================
+    // =====================================================
+    // PLAY SOUND
+    // =====================================================
+
+    void PlaySound(AudioClip clip)
+    {
+        if (audioSource == null ||
+            clip == null)
+            return;
+
+        audioSource.PlayOneShot(
+            clip,
+            zombieVolume
+        );
+    }
+
+    // =====================================================
+    // RANDOM SOUND
+    // =====================================================
+
+    void PlayRandomSound(AudioClip[] sounds)
+    {
+        if (sounds == null ||
+            sounds.Length == 0)
+            return;
+
+        AudioClip clip =
+            sounds[
+                Random.Range(
+                    0,
+                    sounds.Length
+                )
+            ];
+
+        PlaySound(clip);
+    }
+
+    // =====================================================
     // GIZMOS
-    // ========================================
+    // =====================================================
 
     void OnDrawGizmos()
     {
         Gizmos.color = Color.yellow;
+
         Gizmos.DrawWireSphere(
             transform.position,
             detectRange
         );
 
         Gizmos.color = Color.cyan;
+
         Gizmos.DrawWireSphere(
             transform.position,
             runRange
         );
 
         Gizmos.color = Color.red;
+
         Gizmos.DrawWireSphere(
             transform.position,
             attackRange

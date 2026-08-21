@@ -14,6 +14,11 @@ public class MedkitPickup : MonoBehaviour, IInteractable
 
         MedkitInventory.Instance.PickupMedkit();
 
+          if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayPickup();
+        }
+
         Destroy(gameObject);
     }
 }
