@@ -7,6 +7,7 @@ public class ItemSpawnManager : MonoBehaviour
     [Header("Item Prefabs")]
     public GameObject medkitPrefab;
     public GameObject ammoPrefab;
+    public GameObject pinPrefab;
 
     [Header("Spawn Areas")]
     public Transform[] spawnPoints;
@@ -14,6 +15,7 @@ public class ItemSpawnManager : MonoBehaviour
     [Header("Amount")]
     public int medkitCount = 10;
     public int ammoCount = 20;
+    public int pinCount = 10;
 
     [Header("Spawn Area")]
     public float spawnRadius = 10f;
@@ -42,16 +44,36 @@ public class ItemSpawnManager : MonoBehaviour
 
     void SpawnItems()
     {
+        // ==========================
+        // MEDKIT
+        // ==========================
+
         SpawnItem(
             medkitPrefab,
             medkitCount,
             false
         );
 
+
+        // ==========================
+        // AMMO
+        // ==========================
+
         SpawnItem(
             ammoPrefab,
             ammoCount,
             true
+        );
+
+
+        // ==========================
+        // PIN
+        // ==========================
+
+        SpawnItem(
+            pinPrefab,
+            pinCount,
+            false
         );
     }
 
@@ -70,17 +92,29 @@ public class ItemSpawnManager : MonoBehaviour
             return;
         }
 
+        if (spawnPoints == null ||
+            spawnPoints.Length == 0)
+        {
+            Debug.LogWarning(
+                "Chưa gán Spawn Points!"
+            );
+
+            return;
+        }
+
         int spawned = 0;
 
         // Thử nhiều lần để tìm đủ vị trí
         int maxAttempts = amount * 100;
 
-        for (int attempt = 0;
-             attempt < maxAttempts;
-             attempt++)
+        for (
+            int attempt = 0;
+            attempt < maxAttempts;
+            attempt++)
         {
             if (spawned >= amount)
                 break;
+
 
             // ==========================
             // CHỌN SPAWN POINT NGẪU NHIÊN
@@ -128,7 +162,6 @@ public class ItemSpawnManager : MonoBehaviour
                 continue;
             }
 
-
             Vector3 spawnPosition =
                 hit.position;
 
@@ -173,7 +206,7 @@ public class ItemSpawnManager : MonoBehaviour
             }
             else
             {
-                // Medkit xoay ngẫu nhiên
+                // Medkit / Pin xoay ngẫu nhiên
                 rotation =
                     Quaternion.Euler(
                         0f,
@@ -198,7 +231,10 @@ public class ItemSpawnManager : MonoBehaviour
                 );
 
 
-            // Đưa item xuống mặt đất
+            // ==========================
+            // ĐƯA ITEM XUỐNG MẶT ĐẤT
+            // ==========================
+
             PlaceOnGround(item);
 
 
@@ -212,7 +248,7 @@ public class ItemSpawnManager : MonoBehaviour
 
         Debug.Log(
             "Spawn " +
-            (isAmmo ? "Ammo" : "Medkit") +
+            prefab.name +
             ": " +
             spawned +
             "/" +
@@ -242,7 +278,10 @@ public class ItemSpawnManager : MonoBehaviour
         Bounds bounds =
             colliders[0].bounds;
 
-        for (int i = 1; i < colliders.Length; i++)
+        for (
+            int i = 1;
+            i < colliders.Length;
+            i++)
         {
             bounds.Encapsulate(
                 colliders[i].bounds
@@ -272,9 +311,12 @@ public class ItemSpawnManager : MonoBehaviour
         if (spawnPoints == null)
             return;
 
-        Gizmos.color = Color.yellow;
+        Gizmos.color =
+            Color.yellow;
 
-        foreach (Transform point in spawnPoints)
+        foreach (
+            Transform point
+            in spawnPoints)
         {
             if (point == null)
                 continue;

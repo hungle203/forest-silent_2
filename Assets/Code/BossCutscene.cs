@@ -3,34 +3,6 @@ using UnityEngine.Playables;
 
 public class BossCutscene : MonoBehaviour
 {
-    [Header("Boss Music")]
-    public AudioClip bossFightMusic;
-
-    // =========================================================
-    // AUDIO LISTENER
-    // =========================================================
-
-    [Header("Audio Listener")]
-
-    public AudioListener playerAudioListener;
-    public AudioListener cutsceneAudioListener;
-
-
-    // =========================================================
-    // CUTSCENE BOSS AUDIO
-    // =========================================================
-
-    [Header("Boss Cutscene Audio")]
-
-    public AudioSource bossAudioSource;
-
-    [Tooltip("Tiếng Boss gào khi bắt đầu cutscene")]
-    public AudioClip bossRoarSound;
-
-    [Range(0f, 1f)]
-    public float bossRoarVolume = 1f;
-
-
     // =========================================================
     // TIMELINE
     // =========================================================
@@ -100,22 +72,9 @@ public class BossCutscene : MonoBehaviour
 
     void Start()
     {
+        Debug.Log("=================================");
         Debug.Log("=== BOSS CUTSCENE SYSTEM READY ===");
-
-
-        // =====================================================
-        // AUDIO LISTENER BAN ĐẦU
-        // =====================================================
-
-        if (playerAudioListener != null)
-        {
-            playerAudioListener.enabled = true;
-        }
-
-        if (cutsceneAudioListener != null)
-        {
-            cutsceneAudioListener.enabled = false;
-        }
+        Debug.Log("=================================");
 
 
         // =====================================================
@@ -171,49 +130,36 @@ public class BossCutscene : MonoBehaviour
 
 
         // =====================================================
-        // BOSS AI OFF
+        // BOSS GAMEPLAY OFF
         // =====================================================
 
         if (bossAI != null)
         {
-            bossAI.enabled = false;
-
-            // QUAN TRỌNG:
-            // Boss không được phát âm thanh khi game mới bắt đầu.
-
-            bossAI.DisableBossAudio();
-
-            Debug.Log("Boss AI OFF");
-            Debug.Log("Boss Audio OFF");
-        }
-
-
-        // =====================================================
-        // BOSS CUTSCENE AUDIO SOURCE
-        // =====================================================
-
-        if (bossAudioSource == null)
-        {
-            bossAudioSource =
-                GetComponent<AudioSource>();
-        }
-
-        if (bossAudioSource != null)
-        {
-            bossAudioSource.playOnAwake = false;
-            bossAudioSource.loop = false;
-
-            bossAudioSource.Stop();
+            bossAI.SetGameplayEnabled(false);
 
             Debug.Log(
-                "Boss Cutscene Audio OFF - waiting for trigger"
+                "Boss Gameplay OFF - waiting for trigger"
+            );
+        }
+
+
+        // =====================================================
+        // BOSS AUDIO READY
+        // =====================================================
+
+        if (bossAI != null)
+        {
+            bossAI.EnableBossAudio();
+
+            Debug.Log(
+                "Boss Audio READY"
             );
         }
     }
 
 
     // =========================================================
-    // TRIGGER CUTSCENE
+    // TRIGGER
     // =========================================================
 
     private void OnTriggerEnter(Collider other)
@@ -226,17 +172,9 @@ public class BossCutscene : MonoBehaviour
 
         cutscenePlayed = true;
 
-        Debug.Log(
-            "================================="
-        );
-
-        Debug.Log(
-            "PLAYER ĐÃ VÀO BOSS TRIGGER!"
-        );
-
-        Debug.Log(
-            "================================="
-        );
+        Debug.Log("=================================");
+        Debug.Log("PLAYER ĐÃ VÀO BOSS TRIGGER!");
+        Debug.Log("=================================");
 
         StartCutscene();
     }
@@ -253,22 +191,13 @@ public class BossCutscene : MonoBehaviour
 
         cutsceneRunning = true;
 
-
-        Debug.Log(
-            "================================="
-        );
-
-        Debug.Log(
-            "=== BOSS CUTSCENE START ==="
-        );
-
-        Debug.Log(
-            "================================="
-        );
+        Debug.Log("=================================");
+        Debug.Log("=== BOSS CUTSCENE START ===");
+        Debug.Log("=================================");
 
 
         // =====================================================
-        // TẮT GAMEPLAY MUSIC
+        // GAMEPLAY MUSIC OFF
         // =====================================================
 
         if (AudioManager.Instance != null)
@@ -282,12 +211,31 @@ public class BossCutscene : MonoBehaviour
 
 
         // =====================================================
-        // BOSS ROAR
+        // BOSS AUDIO ON
         // =====================================================
 
-        // Tiếng gào này CHỈ chạy khi Player trigger.
+        if (bossAI != null)
+        {
+            bossAI.EnableBossAudio();
 
-        PlayBossRoar();
+            Debug.Log(
+                "Boss Audio READY"
+            );
+        }
+
+
+        // =====================================================
+        // BOSS GAMEPLAY OFF
+        // =====================================================
+
+        if (bossAI != null)
+        {
+            bossAI.SetGameplayEnabled(false);
+
+            Debug.Log(
+                "Boss Gameplay OFF - Cutscene"
+            );
+        }
 
 
         // =====================================================
@@ -300,34 +248,6 @@ public class BossCutscene : MonoBehaviour
 
             Debug.Log(
                 "Player Controller OFF"
-            );
-        }
-
-
-        // =====================================================
-        // PLAYER AUDIO LISTENER OFF
-        // =====================================================
-
-        if (playerAudioListener != null)
-        {
-            playerAudioListener.enabled = false;
-
-            Debug.Log(
-                "Player Audio Listener OFF"
-            );
-        }
-
-
-        // =====================================================
-        // CUTSCENE AUDIO LISTENER ON
-        // =====================================================
-
-        if (cutsceneAudioListener != null)
-        {
-            cutsceneAudioListener.enabled = true;
-
-            Debug.Log(
-                "Cutscene Audio Listener ON"
             );
         }
 
@@ -356,26 +276,6 @@ public class BossCutscene : MonoBehaviour
 
             Debug.Log(
                 "Player UI OFF"
-            );
-        }
-
-
-        // =====================================================
-        // BOSS AI OFF
-        // =====================================================
-
-        if (bossAI != null)
-        {
-            bossAI.DisableBossAudio();
-
-            bossAI.enabled = false;
-
-            Debug.Log(
-                "Boss AI OFF"
-            );
-
-            Debug.Log(
-                "Boss SFX OFF during cutscene"
             );
         }
 
@@ -430,48 +330,12 @@ public class BossCutscene : MonoBehaviour
 
 
     // =========================================================
-    // BOSS ROAR - CUTSCENE
-    // =========================================================
-
-    private void PlayBossRoar()
-    {
-        if (bossAudioSource == null)
-        {
-            Debug.LogWarning(
-                "Boss Cutscene AudioSource chưa được gán!"
-            );
-
-            return;
-        }
-
-        if (bossRoarSound == null)
-        {
-            Debug.LogWarning(
-                "Boss Roar Sound chưa được gán!"
-            );
-
-            return;
-        }
-
-
-        bossAudioSource.PlayOneShot(
-            bossRoarSound,
-            bossRoarVolume
-        );
-
-
-        Debug.Log(
-            "=== BOSS CUTSCENE ROAR PLAY ==="
-        );
-    }
-
-
-    // =========================================================
     // CAMERA TIMELINE FINISHED
     // =========================================================
 
     private void OnCameraFinished(
-        PlayableDirector director)
+        PlayableDirector director
+    )
     {
         if (cameraTimeline != null)
         {
@@ -479,13 +343,42 @@ public class BossCutscene : MonoBehaviour
                 OnCameraFinished;
         }
 
-
         Debug.Log(
             "Camera Timeline FINISHED"
         );
 
-
         PlayBossTimeline();
+    }
+
+
+    // =========================================================
+    // BOSS ROAR FROM TIMELINE
+    // =========================================================
+
+    public void PlayBossRoarFromTimeline()
+    {
+        if (bossAI == null)
+        {
+            Debug.LogWarning(
+                "BossAI chưa được gán!"
+            );
+
+            return;
+        }
+
+        Debug.Log(
+            "================================="
+        );
+
+        Debug.Log(
+            "=== TIMELINE: BOSS ROAR ==="
+        );
+
+        Debug.Log(
+            "================================="
+        );
+
+        bossAI.PlayRoarFromCutscene();
     }
 
 
@@ -525,7 +418,8 @@ public class BossCutscene : MonoBehaviour
     // =========================================================
 
     private void OnBossFinished(
-        PlayableDirector director)
+        PlayableDirector director
+    )
     {
         if (bossTimeline != null)
         {
@@ -533,11 +427,9 @@ public class BossCutscene : MonoBehaviour
                 OnBossFinished;
         }
 
-
         Debug.Log(
             "Boss Timeline FINISHED"
         );
-
 
         EndCutscene();
     }
@@ -549,17 +441,9 @@ public class BossCutscene : MonoBehaviour
 
     private void EndCutscene()
     {
-        Debug.Log(
-            "================================="
-        );
-
-        Debug.Log(
-            "=== CUTSCENE END ==="
-        );
-
-        Debug.Log(
-            "================================="
-        );
+        Debug.Log("=================================");
+        Debug.Log("=== CUTSCENE END ===");
+        Debug.Log("=================================");
 
 
         // =====================================================
@@ -572,34 +456,6 @@ public class BossCutscene : MonoBehaviour
 
             Debug.Log(
                 "Cutscene Camera OFF"
-            );
-        }
-
-
-        // =====================================================
-        // CUTSCENE AUDIO LISTENER OFF
-        // =====================================================
-
-        if (cutsceneAudioListener != null)
-        {
-            cutsceneAudioListener.enabled = false;
-
-            Debug.Log(
-                "Cutscene Audio Listener OFF"
-            );
-        }
-
-
-        // =====================================================
-        // PLAYER AUDIO LISTENER ON
-        // =====================================================
-
-        if (playerAudioListener != null)
-        {
-            playerAudioListener.enabled = true;
-
-            Debug.Log(
-                "Player Audio Listener ON"
             );
         }
 
@@ -633,20 +489,6 @@ public class BossCutscene : MonoBehaviour
 
 
         // =====================================================
-        // BOSS MUSIC ON
-        // =====================================================
-
-        if (AudioManager.Instance != null)
-        {
-            AudioManager.Instance.PlayBossMusic();
-
-            Debug.Log(
-                "=== BOSS FIGHT MUSIC ON ==="
-            );
-        }
-
-
-        // =====================================================
         // PLAYER CONTROLLER ON
         // =====================================================
 
@@ -661,25 +503,47 @@ public class BossCutscene : MonoBehaviour
 
 
         // =====================================================
-        // BOSS AI ON
+        // BOSS MUSIC
+        // =====================================================
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayBossMusic();
+
+            Debug.Log(
+                "=== BOSS FIGHT MUSIC ON ==="
+            );
+        }
+
+
+        // =====================================================
+        // BOSS AUDIO
         // =====================================================
 
         if (bossAI != null)
         {
-            bossAI.enabled = true;
-
-            // =================================================
-            // MỞ TOÀN BỘ BOSS AUDIO
-            // =================================================
-
             bossAI.EnableBossAudio();
+        }
+
+
+        // =====================================================
+        // BOSS GAMEPLAY ON
+        // =====================================================
+
+        if (bossAI != null)
+        {
+            bossAI.SetGameplayEnabled(true);
 
             Debug.Log(
-                "Boss AI ON"
+                "=== BOSS GAMEPLAY ON ==="
             );
 
             Debug.Log(
-                "=== BOSS AUDIO ON ==="
+                "=== BOSS BẮT ĐẦU CHASE PLAYER ==="
+            );
+
+            Debug.Log(
+                "=== BOSS AUDIO ĐANG HOẠT ĐỘNG ==="
             );
         }
 
@@ -687,26 +551,14 @@ public class BossCutscene : MonoBehaviour
         cutsceneRunning = false;
 
 
-        Debug.Log(
-            "================================="
-        );
-
-        Debug.Log(
-            "BOSS BẮT ĐẦU ĐUỔI VÀ TẤN CÔNG PLAYER!"
-        );
-
-        Debug.Log(
-            "================================="
-        );
-
-
-
         // =====================================================
-// XÓA BOSS CUTSCENE SAU KHI CHẠY XONG
-// =====================================================
+        // DISABLE CUTSCENE OBJECT
+        // =====================================================
 
-gameObject.SetActive(false);
+        Debug.Log(
+            "=== BOSS CUTSCENE OBJECT OFF ==="
+        );
 
-Debug.Log("=== BOSS CUTSCENE OBJECT OFF ===");
+        gameObject.SetActive(false);
     }
 }

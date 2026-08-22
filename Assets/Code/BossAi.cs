@@ -4,6 +4,7 @@ using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(Animator))]
+[RequireComponent(typeof(AudioSource))]
 public class BossAI : MonoBehaviour
 {
     // =========================================================
@@ -43,6 +44,26 @@ public class BossAI : MonoBehaviour
 
 
     // =========================================================
+    // BLOOD EFFECT
+    // =========================================================
+
+    [Header("Blood Effect")]
+    public GameObject bloodEffect;
+    public Transform bloodSpawnPoint;
+    public float bloodEffectDestroyTime = 2f;
+
+
+    // =========================================================
+    // HIT REACTION
+    // =========================================================
+
+    [Header("Hit Reaction")]
+    public float hitStunTime = 0.35f;
+    public float knockbackDistance = 0.8f;
+    public float knockbackSpeed = 5f;
+
+
+    // =========================================================
     // BOSS AUDIO
     // =========================================================
 
@@ -56,11 +77,14 @@ public class BossAI : MonoBehaviour
     [Tooltip("Tiếng tấn công")]
     public AudioClip[] attackSounds;
 
-    [Tooltip("Tiếng Boss bị đánh")]
+    [Tooltip("Tiếng bị đánh")]
     public AudioClip[] hurtSounds;
 
-    [Tooltip("Tiếng Boss chết")]
+    [Tooltip("Tiếng chết")]
     public AudioClip[] deathSounds;
+
+    [Tooltip("Tiếng bước chân")]
+    public AudioClip[] footstepSounds;
 
     [Tooltip("Tiếng idle")]
     public AudioClip[] idleSounds;
@@ -78,12 +102,12 @@ public class BossAI : MonoBehaviour
     [Range(0f, 1f)]
     public float spatialBlend = 1f;
 
-    public float minDistance = 3f;
-    public float maxDistance = 25f;
+    public float minDistance = 5f;
+    public float maxDistance = 50f;
 
 
     // =========================================================
-    // IDLE SOUND
+    // IDLE AUDIO
     // =========================================================
 
     [Header("Idle Sound")]
@@ -95,26 +119,30 @@ public class BossAI : MonoBehaviour
 
 
     // =========================================================
-    // AUDIO STATE
+    // GAMEPLAY STATE
     // =========================================================
 
-    // FALSE = Boss chưa được phép phát âm thanh
-    // TRUE  = Cutscene đã kết thúc, Boss được phát âm thanh
-    private bool bossAudioEnabled = false;
+    private bool gameplayEnabled = false;
 
 
     // =========================================================
-    // VARIABLES
+    // COMPONENTS
+    // =========================================================
+
+    private NavMeshAgent agent;
+    private Animator anim;
+
+
+    // =========================================================
+    // STATE
     // =========================================================
 
     private float currentHealth;
     private float nextAttackTime;
 
-    private NavMeshAgent agent;
-    private Animator anim;
-
-    private bool attacking = false;
-    private bool dead = false;
+    private bool attacking;
+    private bool dead;
+    private bool hitStunned;
 
 
     // =========================================================
@@ -153,6 +181,8 @@ public class BossAI : MonoBehaviour
         audioSource.playOnAwake = false;
         audioSource.loop = false;
 
+        audioSource.volume = bossVolume;
+
         audioSource.spatialBlend = spatialBlend;
 
         audioSource.minDistance = minDistance;
@@ -161,9 +191,7 @@ public class BossAI : MonoBehaviour
         audioSource.rolloffMode =
             AudioRolloffMode.Logarithmic;
 
-        audioSource.volume = 1f;
-
-        audioSource.Stop();
+        audioSource.enabled = true;
 
 
         // =====================================================
@@ -189,7 +217,7 @@ public class BossAI : MonoBehaviour
             else
             {
                 Debug.LogWarning(
-                    "BossAI: Không tìm thấy Player có Tag = Player."
+                    "BossAI: Không tìm thấy Player!"
                 );
             }
         }
@@ -204,7 +232,6 @@ public class BossAI : MonoBehaviour
         agent.stoppingDistance =
             attackRange * 0.8f;
 
-        // Boss tự xoay
         agent.updateRotation = false;
 
 
@@ -218,16 +245,24 @@ public class BossAI : MonoBehaviour
 
 
         // =====================================================
-        // AUDIO BAN ĐẦU TẮT
+        // IDLE TIMER
         // =====================================================
-
-        bossAudioEnabled = false;
 
         SetNextIdleSound();
 
-        Debug.Log(
-            "BossAI: Boss Audio đang TẮT - chờ Cutscene kết thúc."
-        );
+
+        // =====================================================
+        // GAMEPLAY BAN ĐẦU TẮT
+        // =====================================================
+
+        gameplayEnabled = false;
+
+
+        Debug.Log("=================================");
+        Debug.Log("=== BOSS AI READY ===");
+        Debug.Log("=== BOSS AUDIO READY ===");
+        Debug.Log("=== BOSS GAMEPLAY OFF ===");
+        Debug.Log("=================================");
     }
 
 
@@ -240,28 +275,15 @@ public class BossAI : MonoBehaviour
         if (dead)
             return;
 
-        bossAudioEnabled = true;
+        if (audioSource != null)
+        {
+            audioSource.enabled = true;
+            audioSource.volume = bossVolume;
+        }
 
         SetNextIdleSound();
 
-        Debug.Log(
-            "================================="
-        );
-
-        Debug.Log(
-            "=== BOSS AUDIO ENABLED ==="
-        );
-
-        Debug.Log(
-            "================================="
-        );
-
-
-        // =====================================================
-        // BOSS GÀO NGAY KHI BẮT ĐẦU CHIẾN ĐẤU
-        // =====================================================
-
-        PlayRoar();
+        Debug.Log("=== BOSS AUDIO ENABLED ===");
     }
 
 
@@ -271,16 +293,86 @@ public class BossAI : MonoBehaviour
 
     public void DisableBossAudio()
     {
-        bossAudioEnabled = false;
-
         if (audioSource != null)
         {
             audioSource.Stop();
         }
 
+        Debug.Log("=== BOSS AUDIO STOPPED ===");
+    }
+
+
+    // =========================================================
+    // SET GAMEPLAY ENABLED
+    // =========================================================
+
+    public void SetGameplayEnabled(bool enabled)
+    {
+        gameplayEnabled = enabled;
+
+        if (!enabled)
+        {
+            attacking = false;
+
+            if (agent != null &&
+                agent.isOnNavMesh)
+            {
+                agent.isStopped = true;
+                agent.velocity = Vector3.zero;
+            }
+
+            if (anim != null)
+            {
+                anim.SetBool("IsWalking", false);
+                anim.SetBool("IsAttacking", false);
+            }
+
+            Debug.Log(
+                "=== BOSS GAMEPLAY DISABLED ==="
+            );
+        }
+        else
+        {
+            if (agent != null &&
+                agent.isOnNavMesh)
+            {
+                agent.isStopped = false;
+            }
+
+            Debug.Log(
+                "=== BOSS GAMEPLAY ENABLED ==="
+            );
+        }
+    }
+
+
+    // =========================================================
+    // ROAR FROM CUTSCENE
+    // =========================================================
+
+    public void PlayRoarFromCutscene()
+    {
+        if (dead)
+            return;
+
         Debug.Log(
-            "=== BOSS AUDIO DISABLED ==="
+            "=== BOSS ROAR FROM TIMELINE ==="
         );
+
+        PlayRandomSound(roarSounds);
+    }
+
+
+    // =========================================================
+    // ROAR
+    // =========================================================
+
+    public void PlayRoar()
+    {
+        if (dead)
+            return;
+
+        PlayRandomSound(roarSounds);
     }
 
 
@@ -290,7 +382,27 @@ public class BossAI : MonoBehaviour
 
     void Update()
     {
-        if (dead || player == null)
+        if (dead)
+            return;
+
+
+        // =====================================================
+        // GAMEPLAY OFF
+        // =====================================================
+
+        if (!gameplayEnabled)
+            return;
+
+
+        if (player == null)
+            return;
+
+
+        // =====================================================
+        // HIT STUN
+        // =====================================================
+
+        if (hitStunned)
             return;
 
 
@@ -343,7 +455,9 @@ public class BossAI : MonoBehaviour
             if (!attacking &&
                 Time.time >= nextAttackTime)
             {
-                StartCoroutine(Attack());
+                StartCoroutine(
+                    Attack()
+                );
             }
 
             return;
@@ -364,6 +478,9 @@ public class BossAI : MonoBehaviour
 
     void ChasePlayer()
     {
+        if (!gameplayEnabled)
+            return;
+
         if (!agent.isOnNavMesh)
             return;
 
@@ -373,28 +490,19 @@ public class BossAI : MonoBehaviour
             player.position
         );
 
-
-        // =====================================================
-        // ANIMATION
-        // =====================================================
-
         anim.SetBool(
             "IsAttacking",
             false
         );
 
         bool isMoving =
-            agent.velocity.sqrMagnitude > 0.01f;
+            agent.velocity.sqrMagnitude >
+            0.01f;
 
         anim.SetBool(
             "IsWalking",
             isMoving
         );
-
-
-        // =====================================================
-        // ROTATION
-        // =====================================================
 
         FacePlayer();
     }
@@ -406,7 +514,8 @@ public class BossAI : MonoBehaviour
 
     void StopMovement()
     {
-        if (agent.isOnNavMesh)
+        if (agent != null &&
+            agent.isOnNavMesh)
         {
             agent.isStopped = true;
             agent.velocity = Vector3.zero;
@@ -438,7 +547,9 @@ public class BossAI : MonoBehaviour
             return;
 
         Quaternion targetRotation =
-            Quaternion.LookRotation(direction);
+            Quaternion.LookRotation(
+                direction
+            );
 
         transform.rotation =
             Quaternion.Slerp(
@@ -455,6 +566,9 @@ public class BossAI : MonoBehaviour
 
     IEnumerator Attack()
     {
+        if (!gameplayEnabled)
+            yield break;
+
         attacking = true;
 
         nextAttackTime =
@@ -464,11 +578,6 @@ public class BossAI : MonoBehaviour
         StopMovement();
 
         FacePlayer();
-
-
-        // =====================================================
-        // ANIMATION
-        // =====================================================
 
         anim.SetBool(
             "IsWalking",
@@ -499,7 +608,8 @@ public class BossAI : MonoBehaviour
         );
 
 
-        if (!dead)
+        if (!dead &&
+            gameplayEnabled)
         {
             DealDamage();
         }
@@ -545,7 +655,6 @@ public class BossAI : MonoBehaviour
             attackRange + 0.5f)
             return;
 
-
         PlayerHealth health =
             player.GetComponent<PlayerHealth>();
 
@@ -570,9 +679,23 @@ public class BossAI : MonoBehaviour
         currentHealth -= damage;
 
         Debug.Log(
-            "Boss HP: " +
-            currentHealth
+            "BOSS TAKE DAMAGE: " +
+            damage
         );
+
+        Debug.Log(
+            "BOSS HP: " +
+            currentHealth +
+            " / " +
+            maxHealth
+        );
+
+
+        // =====================================================
+        // BLOOD
+        // =====================================================
+
+        SpawnBloodEffect();
 
 
         // =====================================================
@@ -585,7 +708,19 @@ public class BossAI : MonoBehaviour
 
 
         // =====================================================
-        // DEAD
+        // HIT REACTION
+        // =====================================================
+
+        if (!hitStunned)
+        {
+            StartCoroutine(
+                HitReaction()
+            );
+        }
+
+
+        // =====================================================
+        // DEATH
         // =====================================================
 
         if (currentHealth <= 0)
@@ -596,38 +731,66 @@ public class BossAI : MonoBehaviour
 
 
     // =========================================================
-    // DIE
+    // BLOOD EFFECT
     // =========================================================
 
-    void Die()
+    void SpawnBloodEffect()
     {
-        if (dead)
+        if (bloodEffect == null)
             return;
 
-        dead = true;
+        Vector3 spawnPosition;
 
-        StopAllCoroutines();
+        if (bloodSpawnPoint != null)
+        {
+            spawnPosition =
+                bloodSpawnPoint.position;
+        }
+        else
+        {
+            spawnPosition =
+                transform.position +
+                Vector3.up * 1.2f;
+        }
 
+        GameObject effect =
+            Instantiate(
+                bloodEffect,
+                spawnPosition,
+                Quaternion.identity
+            );
 
-        // =====================================================
-        // DEATH SOUND
-        // =====================================================
-
-        PlayRandomSound(
-            deathSounds
+        Destroy(
+            effect,
+            bloodEffectDestroyTime
         );
+    }
+
+
+    // =========================================================
+    // HIT REACTION
+    // =========================================================
+
+    IEnumerator HitReaction()
+    {
+        if (dead)
+            yield break;
+
+        hitStunned = true;
+
+        attacking = false;
 
 
         // =====================================================
         // STOP NAVMESH
         // =====================================================
 
-        if (agent.isOnNavMesh)
+        if (agent != null &&
+            agent.isOnNavMesh)
         {
             agent.isStopped = true;
+            agent.velocity = Vector3.zero;
         }
-
-        agent.enabled = false;
 
 
         // =====================================================
@@ -644,6 +807,156 @@ public class BossAI : MonoBehaviour
             false
         );
 
+
+        // =====================================================
+        // KNOCKBACK DIRECTION
+        // =====================================================
+
+        Vector3 direction =
+            transform.position -
+            player.position;
+
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude < 0.01f)
+        {
+            direction =
+                -transform.forward;
+        }
+
+        direction.Normalize();
+
+
+        // =====================================================
+        // KNOCKBACK
+        // =====================================================
+
+        Vector3 startPosition =
+            transform.position;
+
+        Vector3 targetPosition =
+            startPosition +
+            direction *
+            knockbackDistance;
+
+        float elapsed = 0f;
+
+
+        while (elapsed < hitStunTime)
+        {
+            if (dead)
+                yield break;
+
+            elapsed +=
+                Time.deltaTime;
+
+            float t =
+                elapsed /
+                hitStunTime;
+
+            Vector3 newPosition =
+                Vector3.Lerp(
+                    startPosition,
+                    targetPosition,
+                    t
+                );
+
+            newPosition.y =
+                transform.position.y;
+
+            if (agent != null &&
+                agent.isOnNavMesh)
+            {
+                agent.Move(
+                    newPosition -
+                    transform.position
+                );
+            }
+            else
+            {
+                transform.position =
+                    newPosition;
+            }
+
+            yield return null;
+        }
+
+
+        // =====================================================
+        // END HIT
+        // =====================================================
+
+        if (!dead &&
+            gameplayEnabled &&
+            agent != null &&
+            agent.isOnNavMesh)
+        {
+            agent.isStopped = false;
+        }
+
+        hitStunned = false;
+    }
+
+
+    // =========================================================
+    // DIE
+    // =========================================================
+
+    void Die()
+    {
+        if (dead)
+            return;
+
+
+        // =====================================================
+        // DEATH SOUND TRƯỚC KHI DEAD
+        // =====================================================
+
+        PlayRandomSound(
+            deathSounds
+        );
+
+
+        dead = true;
+
+        StopAllCoroutines();
+
+
+        // =====================================================
+        // STOP NAVMESH
+        // =====================================================
+
+        if (agent != null &&
+            agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+        }
+
+        if (agent != null)
+        {
+            agent.enabled = false;
+        }
+
+
+        // =====================================================
+        // STOP ANIMATION
+        // =====================================================
+
+        anim.SetBool(
+            "IsWalking",
+            false
+        );
+
+        anim.SetBool(
+            "IsAttacking",
+            false
+        );
+
+
+        // =====================================================
+        // DEAD ANIMATION
+        // =====================================================
+
         anim.SetBool(
             "IsDead",
             true
@@ -651,7 +964,7 @@ public class BossAI : MonoBehaviour
 
 
         // =====================================================
-        // DESTROY BOSS
+        // DESTROY
         // =====================================================
 
         Destroy(
@@ -667,17 +980,9 @@ public class BossAI : MonoBehaviour
 
     void PlayIdleSound()
     {
-        // Chưa kết thúc cutscene
-        // => KHÔNG PHÁT ÂM THANH
-
-        if (!bossAudioEnabled)
-            return;
-
-
         if (idleSounds == null ||
             idleSounds.Length == 0)
             return;
-
 
         if (Time.time >= nextIdleSound)
         {
@@ -691,7 +996,7 @@ public class BossAI : MonoBehaviour
 
 
     // =========================================================
-    // SET NEXT IDLE SOUND
+    // SET IDLE TIMER
     // =========================================================
 
     void SetNextIdleSound()
@@ -706,13 +1011,13 @@ public class BossAI : MonoBehaviour
 
 
     // =========================================================
-    // ROAR
+    // FOOTSTEP
     // =========================================================
 
-    public void PlayRoar()
+    public void PlayFootstep()
     {
         PlayRandomSound(
-            roarSounds
+            footstepSounds
         );
     }
 
@@ -725,23 +1030,31 @@ public class BossAI : MonoBehaviour
         AudioClip[] sounds
     )
     {
-        // =====================================================
-        // QUAN TRỌNG
-        // =====================================================
-        // Nếu Cutscene chưa kết thúc
-        // => KHÔNG PHÁT BẤT KỲ BOSS SFX NÀO
-
-        if (!bossAudioEnabled)
-            return;
-
-
         if (sounds == null ||
             sounds.Length == 0)
+        {
+            Debug.LogWarning(
+                "BossAI: AudioClip array đang trống!"
+            );
+
             return;
+        }
 
 
         if (audioSource == null)
+        {
+            Debug.LogWarning(
+                "BossAI: AudioSource chưa được gán!"
+            );
+
             return;
+        }
+
+
+        if (!audioSource.enabled)
+        {
+            audioSource.enabled = true;
+        }
 
 
         AudioClip clip =
@@ -754,7 +1067,17 @@ public class BossAI : MonoBehaviour
 
 
         if (clip == null)
+        {
+            Debug.LogWarning(
+                "BossAI: AudioClip bị NULL!"
+            );
+
             return;
+        }
+
+
+        audioSource.volume =
+            bossVolume;
 
 
         audioSource.PlayOneShot(
@@ -764,8 +1087,9 @@ public class BossAI : MonoBehaviour
 
 
         Debug.Log(
-            "Boss SFX: " +
-            clip.name
+            "=== BOSS SOUND PLAY: " +
+            clip.name +
+            " ==="
         );
     }
 }
