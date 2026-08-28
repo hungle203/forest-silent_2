@@ -1,34 +1,29 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.InputSystem;
 
 public class PauseMenu : MonoBehaviour
 {
-    public GameObject pauseUI;
+    [Header("Pause UI")]
+    public GameObject pause;
 
-    bool isPaused;
+    private bool isPaused;
 
-    void Start()
+    private void Start()
     {
-        pauseUI.SetActive(false);
-    }
+        isPaused = false;
 
-    void Update()
-    {
-        if (Keyboard.current.escapeKey.wasPressedThisFrame)
-        {
-            if (isPaused)
-                ResumeGame();
-            else
-                PauseGame();
-        }
+        if (pause != null)
+            pause.SetActive(false);
+
+        Time.timeScale = 1f;
     }
 
     public void PauseGame()
     {
         isPaused = true;
 
-        pauseUI.SetActive(true);
+        if (pause != null)
+            pause.SetActive(true);
 
         Time.timeScale = 0f;
 
@@ -40,7 +35,8 @@ public class PauseMenu : MonoBehaviour
     {
         isPaused = false;
 
-        pauseUI.SetActive(false);
+        if (pause != null)
+            pause.SetActive(false);
 
         Time.timeScale = 1f;
 
@@ -48,18 +44,50 @@ public class PauseMenu : MonoBehaviour
         Cursor.visible = false;
     }
 
-    public void BackToMainMenu()
-    {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene("MainMenu");
-    }
+    // =====================================================
+    // EXIT TO MAIN MENU
+    // =====================================================
 
-    public void QuitGame()
+    public void ExitToMainMenu()
     {
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
+        // SAVE TRƯỚC
+        if (SaveGame.Instance != null)
+        {
+            bool saved =
+                SaveGame.Instance.Save();
+
+            if (saved)
+            {
+                Debug.Log(
+                    "Đã Save trước khi về Main Menu."
+                );
+            }
+            else
+            {
+                Debug.LogWarning(
+                    "Save thất bại!"
+                );
+            }
+        }
+        else
+        {
+            Debug.LogError(
+                "Không tìm thấy SaveGame.Instance!"
+            );
+        }
+
+        // Reset game time
+        Time.timeScale = 1f;
+
+        // Hiện chuột
+        Cursor.lockState =
+            CursorLockMode.None;
+
+        Cursor.visible = true;
+
+        // Về Main Menu
+        SceneManager.LoadScene(
+            "MainMenu"
+        );
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(Animator))]
@@ -902,76 +903,48 @@ public class BossAI : MonoBehaviour
     // DIE
     // =========================================================
 
-    void Die()
+  void Die()
+{
+    if (dead)
+        return;
+
+    // Tiếng chết
+    PlayRandomSound(deathSounds);
+
+    dead = true;
+
+    StopAllCoroutines();
+
+    // Dừng Boss
+    if (agent != null && agent.isOnNavMesh)
     {
-        if (dead)
-            return;
-
-
-        // =====================================================
-        // DEATH SOUND TRƯỚC KHI DEAD
-        // =====================================================
-
-        PlayRandomSound(
-            deathSounds
-        );
-
-
-        dead = true;
-
-        StopAllCoroutines();
-
-
-        // =====================================================
-        // STOP NAVMESH
-        // =====================================================
-
-        if (agent != null &&
-            agent.isOnNavMesh)
-        {
-            agent.isStopped = true;
-        }
-
-        if (agent != null)
-        {
-            agent.enabled = false;
-        }
-
-
-        // =====================================================
-        // STOP ANIMATION
-        // =====================================================
-
-        anim.SetBool(
-            "IsWalking",
-            false
-        );
-
-        anim.SetBool(
-            "IsAttacking",
-            false
-        );
-
-
-        // =====================================================
-        // DEAD ANIMATION
-        // =====================================================
-
-        anim.SetBool(
-            "IsDead",
-            true
-        );
-
-
-        // =====================================================
-        // DESTROY
-        // =====================================================
-
-        Destroy(
-            gameObject,
-            10f
-        );
+        agent.isStopped = true;
     }
+
+    if (agent != null)
+    {
+        agent.enabled = false;
+    }
+
+    // Tắt animation di chuyển / tấn công
+    anim.SetBool("IsWalking", false);
+    anim.SetBool("IsAttacking", false);
+
+    // Animation chết
+    anim.SetBool("IsDead", true);
+
+    // Chờ 5 giây rồi về Main Menu
+    StartCoroutine(ReturnToMainMenu());
+}
+
+IEnumerator ReturnToMainMenu()
+{
+    yield return new WaitForSeconds(5f);
+
+    Time.timeScale = 1f;
+
+    SceneManager.LoadScene("MainMenu");
+}
 
 
     // =========================================================

@@ -20597,7 +20597,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
   walkSpeed: 4
-  sprintSpeed: 100
+  sprintSpeed: 10
   jumpHeight: 1.5
   gravity: -20
   cameraHolder: {fileID: 296898737}
@@ -25929,7 +25929,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 560806438}
         m_TargetAssemblyTypeName: PauseMenu, Assembly-CSharp
-        m_MethodName: BackToMainMenu
+        m_MethodName: ExitToMainMenu
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -45468,7 +45468,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b8ffb19cf1705924d832e0590656e0df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PauseMenu
-  pauseUI: {fileID: 1984941714}
+  pause: {fileID: 1984941714}
 --- !u!4 &560806439
 Transform:
   m_ObjectHideFlags: 0
@@ -48063,6 +48063,51 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 405216939484306448, guid: 23c628b176d04df4a83eabf82d31b32d, type: 3}
   m_PrefabInstance: {fileID: 914294424}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &596523541
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 596523542}
+  - component: {fileID: 596523543}
+  m_Layer: 0
+  m_Name: save
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &596523542
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 596523541}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 984319933}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &596523543
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 596523541}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fad08aeb278425d49bcd5d8619260ca7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveGame
+  player: {fileID: 270560272}
 --- !u!1001 &598024765
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -78855,6 +78900,7 @@ Transform:
   - {fileID: 1828015072}
   - {fileID: 1782178390}
   - {fileID: 56558535}
+  - {fileID: 596523542}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &985581847

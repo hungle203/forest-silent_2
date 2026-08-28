@@ -104,40 +104,53 @@ public class PlayerHealth : MonoBehaviour
     // =========================
 
     private void Die()
+{
+    if (isDead)
+        return;
+
+    isDead = true;
+
+    Debug.Log("PLAYER DIED");
+
+    // Tắt di chuyển
+    PlayerMovement movement =
+        GetComponent<PlayerMovement>();
+
+    if (movement != null)
     {
-        if (isDead)
-            return;
-
-        isDead = true;
-
-        Debug.Log("PLAYER DIED");
-
-        // Tắt di chuyển
-        PlayerMovement movement =
-            GetComponent<PlayerMovement>();
-
-        if (movement != null)
-        {
-            movement.enabled = false;
-        }
-
-        // Chờ một chút rồi về Main Menu
-        Invoke(
-            nameof(ReturnToMainMenu),
-            returnToMenuDelay
-        );
+        movement.enabled = false;
     }
+
+    // =========================
+    // XÓA SAVE KHI PLAYER CHẾT
+    // =========================
+
+    SaveGame.DeleteSave();
+
+    // =========================
+    // VỀ MAIN MENU
+    // =========================
+
+    Invoke(
+        nameof(ReturnToMainMenu),
+        returnToMenuDelay
+    );
+}
 
     // =========================
     // RETURN MAIN MENU
     // =========================
 
-    private void ReturnToMainMenu()
-    {
-        Time.timeScale = 1f;
+   private void ReturnToMainMenu()
+{
+    Time.timeScale = 1f;
 
-        SceneManager.LoadScene(mainMenuScene);
-    }
+    // Hiện chuột khi vào Main Menu
+    Cursor.lockState = CursorLockMode.None;
+    Cursor.visible = true;
+
+    SceneManager.LoadScene(mainMenuScene);
+}
 
     // =========================
     // GET HEALTH
@@ -147,4 +160,18 @@ public class PlayerHealth : MonoBehaviour
     {
         return currentHealth;
     }
+
+    public void SetHealth(float value)
+{
+    currentHealth = Mathf.Clamp(
+        value,
+        0f,
+        maxHealth
+    );
+
+    Debug.Log(
+        "Player Health Loaded: " +
+        currentHealth
+    );
+}
 }
